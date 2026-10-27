@@ -1,0 +1,47 @@
+[project]
+name = "rota-segura"
+version = "0.1.0"
+description = "Agente LangGraph que gera relatórios de segurança nas rodovias federais (dados abertos PRF + notícias)"
+requires-python = ">=3.10"
+dependencies = [
+    "langgraph>=1.0",
+    "langchain>=1.0",
+    "langchain-anthropic>=1.0",
+    "langchain-openai>=1.0",
+    "duckdb>=1.1",
+    "pandas>=2.2",
+    "pyarrow>=17",
+    "matplotlib>=3.9",
+    "jinja2>=3.1",
+    "feedparser>=6.0",
+    "httpx>=0.27",
+    "python-dotenv>=1.0",
+    "pydantic>=2.7",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6", "reportlab>=4"]
+
+[project.scripts]
+rota-segura = "rota_segura.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/rota_segura/report.py" = ["E501"]  # template Markdown
