@@ -5,7 +5,7 @@ inclusion: always
 
 - Python 3.10+ · venv em `.venv` · dependências em `pyproject.toml`.
 - **LangGraph** (orquestração) + **LangChain** `init_chat_model` (provedor plugável via `LLM_MODEL`,
-  ex.: `anthropic:claude-sonnet-5-5`, `openai:gpt-4.1-mini`). Sem chave → modo `offline` (LLM fake determinístico).
+  padrão `google_genai:gemini-3.6-flash` (plano gratuito); também `anthropic:...`, `groq:...`). Sem chave → modo `offline` (LLM fake determinístico).
 - **DuckDB** sobre Parquet normalizado (`data/processed/acidentes.parquet`).
 - **matplotlib** para gráficos (PNG) · **Jinja2** para o relatório Markdown.
 - Notícias: Tavily (se `TAVILY_API_KEY`) → fallback RSS (Google News, Agência Gov). O site da PRF não tem RSS funcional..

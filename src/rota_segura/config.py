@@ -44,7 +44,7 @@ class Settings:
     min_cell_size: int = 5  # supressão LGPD para agregados por pessoa
     max_writer_attempts: int = 3
     max_news: int = 8
-    llm_model: str = field(default_factory=lambda: os.getenv("LLM_MODEL", "anthropic:claude-sonnet-5-5"))
+    llm_model: str = field(default_factory=lambda: os.getenv("LLM_MODEL", "google_genai:gemini-3.6-flash"))
     tavily_api_key: str | None = field(default_factory=lambda: os.getenv("TAVILY_API_KEY"))
 
     @property

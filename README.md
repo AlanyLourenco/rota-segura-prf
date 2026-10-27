@@ -18,7 +18,7 @@ comentários do LLM **rotulados por fonte, validados por guardrails e auditados*
 ```bash
 python -m venv .venv
 .venv/Scripts/pip install -e ".[dev]"        # Linux/macOS: .venv/bin/pip
-cp .env.example .env                           # opcional: LLM_MODEL, ANTHROPIC_API_KEY/OPENAI_API_KEY, TAVILY_API_KEY
+cp .env.example .env                           # coloque sua GOOGLE_API_KEY (Gemini Flash, plano gratuito)
 
 rota-segura ingest                             # baixa e normaliza a base PRF (2024–2026)
 rota-segura report                             # relatório Brasil
@@ -46,7 +46,7 @@ Saídas: `reports/<UF>-<run_id>/relatorio.md` (+ PNGs) e `audit/<run_id>.jsonl` 
 | **Nó `collect` com fallback** | Se o LLM pular uma tool obrigatória, o sistema executa e **registra a decisão** — o relatório nunca sai sem métricas. |
 | **Writer com saída estruturada** (`Draft` pydantic) | Cada parágrafo traz `sources` (`BASE` / `NEWS:n`), o que torna a validação automática possível. |
 | **DuckDB sobre Parquet** | SQL rápido, sem servidor, consultas legíveis e reproduzíveis (hash da base no manifesto). |
-| **Provedor de LLM plugável** (`init_chat_model`) | Troca de modelo por variável de ambiente; modo offline para testes/CI. |
+| **Provedor de LLM plugável** (`init_chat_model`) | Padrão: **Gemini Flash** (plano gratuito do Google AI Studio). Troca de modelo por variável de ambiente; modo offline para testes/CI. |
 
 Por que **não** RAG/banco vetorial: as métricas são agregações exatas sobre dados tabulares — recuperação
 semântica traria imprecisão onde precisamos de exatidão. Notícias são poucas e recentes; busca direta basta.

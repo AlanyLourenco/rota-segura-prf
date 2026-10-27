@@ -8,6 +8,7 @@ dependencies = [
     "langchain>=1.0",
     "langchain-anthropic>=1.0",
     "langchain-openai>=1.0",
+    "langchain-google-genai>=2.0",
     "duckdb>=1.1",
     "pandas>=2.2",
     "pyarrow>=17",
