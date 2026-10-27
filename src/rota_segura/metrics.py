@@ -89,6 +89,9 @@ class MetricsBundle(BaseModel):
             values |= {s.br, s.km, s.accidents, s.deaths, s.severe_accidents}
         values |= {p.accidents for p in self.daily} | {m.accidents for m in self.monthly}
         values |= {m.deaths for m in self.monthly}
+        for m in self.monthly:  # "2025-09" -> 2025 e 9 são citáveis
+            year, month = m.month.split("-")
+            values |= {int(year), int(month)}
         return {float(v) for v in values}
 
 

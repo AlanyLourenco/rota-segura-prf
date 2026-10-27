@@ -50,10 +50,19 @@ def _model_name(llm: Any) -> str:
     return getattr(llm, "model_name", None) or getattr(llm, "model", None) or type(llm).__name__
 
 
+def _unpack_structured(result: Any) -> tuple[Draft, Any]:
+    """`with_structured_output(include_raw=True)` devolve {raw, parsed, parsing_error}; o LLM offline, o Draft."""
+    if isinstance(result, Draft):
+        return result, None
+    if result.get("parsed") is None:
+        raise ValueError(f"Saída do writer fora do schema Draft: {result.get('parsing_error')}")
+    return result["parsed"], result["raw"]
+
+
 def build_graph(deps: AgentDeps):
     tools = {t.name: t for t in make_tools(deps.ctx)}
     orchestrator = deps.orchestrator_llm.bind_tools(list(tools.values()))
-    writer = deps.writer_llm.with_structured_output(Draft)
+    writer = deps.writer_llm.with_structured_output(Draft, include_raw=True)
     audit, ctx, cfg = deps.audit, deps.ctx, deps.ctx.cfg
 
     def input_guard(state: ReportState) -> ReportState:
@@ -144,7 +153,8 @@ def build_graph(deps: AgentDeps):
             feedback=feedback,
         )
         with audit.step("writer", attempt=attempt):
-            draft: Draft = writer.invoke([SystemMessage(prompts.WRITER_SYSTEM), HumanMessage(user)])
+            result = writer.invoke([SystemMessage(prompts.WRITER_SYSTEM), HumanMessage(user)])
+            draft, raw = _unpack_structured(result)
             audit.log(
                 "llm_call",
                 "writer",
@@ -152,6 +162,7 @@ def build_graph(deps: AgentDeps):
                 prompt_version=prompts.PROMPT_VERSION,
                 prompt_sha256=hashlib.sha256(user.encode()).hexdigest(),
                 output=draft.model_dump(),
+                usage=getattr(raw, "usage_metadata", None),
             )
         return {"draft": draft, "attempts": attempt}
 

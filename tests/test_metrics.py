@@ -53,3 +53,4 @@ def test_daily_has_30_points_and_monthly_12_months_window(engine):
 def test_numbers_contains_metrics(engine):
     m = engine.compute()
     assert {90.0, 60.0, 50.0, 3.0}.issubset(m.numbers())
+    assert {2025.0, 8.0}.issubset(m.numbers())  # ano/mês da série mensal (2025-08)

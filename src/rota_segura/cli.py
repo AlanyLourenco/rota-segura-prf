@@ -51,6 +51,11 @@ def cmd_report(args: argparse.Namespace) -> int:
         audit.write_manifest(status="rejected", reason=str(exc))
         print(f"Requisição rejeitada: {exc}", file=sys.stderr)
         return 2
+    except Exception as exc:  # falha do provedor de LLM (cota, indisponibilidade) fica registrada
+        reason = f"{type(exc).__name__}: {str(exc)[:500]}"
+        audit.write_manifest(status="error", reason=reason, llm_model=settings.llm_model)
+        print(f"Falha na execução (registrada em {audit.manifest_path}): {reason[:200]}", file=sys.stderr)
+        return 1
 
     audit.write_manifest(
         status="ok", scope=ctx.metrics.scope, focus=final.get("focus"), offline=args.offline,

@@ -34,7 +34,7 @@ class OfflineOrchestrator:
 class OfflineWriter:
     model_name = "offline:template-writer"
 
-    def with_structured_output(self, schema):
+    def with_structured_output(self, schema, **kwargs):
         return self
 
     def invoke(self, messages: list[BaseMessage]) -> Draft:
