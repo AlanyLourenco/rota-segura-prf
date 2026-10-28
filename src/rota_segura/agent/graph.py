@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Annotated, Any, TypedDict
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
@@ -20,7 +21,8 @@ from rota_segura.agent import prompts
 from rota_segura.agent.tools import ToolContext, make_tools, metrics_for_llm
 from rota_segura.audit import AuditLogger
 from rota_segura.data.privacy import assert_llm_safe
-from rota_segura.guardrails import Draft, GuardReport, validate_draft, validate_request
+from rota_segura.guardrails import Draft, GuardReport, numbers_in, validate_draft, validate_request
+from rota_segura.news import NewsItem
 from rota_segura.report import render_report
 
 MAX_ORCHESTRATOR_STEPS = 8
@@ -44,6 +46,12 @@ class AgentDeps:
     audit: AuditLogger
     orchestrator_llm: Any
     writer_llm: Any
+
+
+def _news_text(item: NewsItem) -> str:
+    """Texto de onde números de uma notícia podem ser citados (inclui a data em dd/mm/aaaa)."""
+    published = "/".join(reversed(item.published.split("-"))) if item.published else ""
+    return f"{item.title} {item.snippet} {published}"
 
 
 def _model_name(llm: Any) -> str:
@@ -168,7 +176,11 @@ def build_graph(deps: AgentDeps):
 
     def output_guard(state: ReportState) -> ReportState:
         with audit.step("output_guard", attempt=state["attempts"]):
-            report = validate_draft(state["draft"], ctx.metrics.numbers(), {n.id for n in ctx.news or []})
+            news = ctx.news or []
+            report = validate_draft(
+                state["draft"], ctx.metrics.numbers(), {n.id for n in news},
+                news_numbers={n.id: numbers_in(_news_text(n)) for n in news},
+            )  # fmt: skip
             audit.decision(
                 "output_guard",
                 "aprovado" if report.passed else "reprovado",
@@ -219,7 +231,7 @@ def build_graph(deps: AgentDeps):
                 attempts=state["attempts"],
                 out_dir=ctx.output_dir,
             )
-            audit.log("artifact", "render", report=str(path))
+            audit.log("artifact", "render", report=Path(path))
         return {"report_path": str(path)}
 
     graph = StateGraph(ReportState)

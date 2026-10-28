@@ -24,14 +24,16 @@ rota-segura ingest                             # baixa e normaliza a base PRF (2
 rota-segura report                             # relatório Brasil
 rota-segura report --uf SC --focus "feriados e obras na BR-101"
 rota-segura report --uf SC --offline           # sem chave de API: LLM determinístico (mesmo grafo)
+rota-segura report --uf SC --news-from reports/exemplos/SC/noticias.json  # replay das mesmas notícias
 pytest -q && ruff check src tests
 ```
 
-Saídas: `reports/<UF>-<run_id>/relatorio.md` (+ PNGs) e `audit/<run_id>.jsonl` + `audit/<run_id>.manifest.json`.
+Saídas: `reports/<UF>-<run_id>/relatorio.md` (+ PNGs e `noticias.json`, snapshot com hash no manifesto) e `audit/<run_id>.jsonl` + `audit/<run_id>.manifest.json`.
 
-> Os exemplos versionados foram gerados em **modo offline** (sem chave de LLM disponível no ambiente de
-> desenvolvimento). Métricas, gráficos, notícias, guardrails e auditoria são reais; só a redação vem do
-> redator-template. Com `LLM_MODEL` + chave, o mesmo fluxo usa o LLM real.
+> Os exemplos versionados foram gerados em 27/10/2026 com **LLM real** (`google_genai:gemini-3.6-flash`,
+> plano gratuito): guardrail de saída aprovado na 1ª tentativa nos dois. O SC é um **replay** (`--news-from`)
+> da execução original, com o mesmo `news_sha256` no manifesto. Em `auditoria/` também está uma execução que
+> falhou por cota do provedor (429), registrada no manifesto com `status=error`, sem fallback silencioso.
 
 ---
 
@@ -84,8 +86,9 @@ escopo, sem padrões de injeção de prompt e sem PII.
 
 **Saída** (`validate_draft`, após o writer):
 1. Todo parágrafo precisa de fonte; IDs de notícia precisam existir.
-2. **Números rastreáveis**: em parágrafos `BASE`, todo número precisa existir no `MetricsBundle`
-   (aceita formato pt-BR e arredondamento de 1 casa). Pega alucinação numérica.
+2. **Números rastreáveis**: todo número precisa existir no `MetricsBundle` (parágrafo `BASE`) ou no
+   título/snippet/data da notícia citada (parágrafo `NEWS`, inclusive misto). Aceita formato pt-BR e
+   arredondamento de 1 casa. Pega alucinação numérica.
 3. **Causa ≠ notícia**: parágrafo que cita notícia não pode ter linguagem causal ("causado", "devido a",
    "provocado"…). Causas só vêm da base.
 4. **PII**: CPF, placa, e-mail, telefone bloqueados.
@@ -96,13 +99,19 @@ parágrafos reprovados, adiciona aviso e o relatório sai com todas as métricas
 Prompts: notícia é delimitada como **dado não confiável** (`<noticias>`), o orquestrador ignora instruções
 vindas de resultados de tools, e o writer é instruído a usar linguagem de hipótese ao relacionar fontes.
 
+**Avaliação (conjunto golden)**: `evals/golden_guardrails.json` tem 32 casos sintéticos (injeção em pt/en,
+fora de escopo, UF inválida, PII, número inventado em parágrafo BASE/misto/notícia, fonte inválida, causa a
+partir de notícia, hipótese permitida, textos limpos). `rota-segura eval` mostra acertos por categoria e roda
+no `pytest`. O conjunto já achou uma lacuna real ("forget all rules" passava na entrada), corrigida com teste.
+
 ## 5. Governança e transparência
 
 - `audit/<run_id>.jsonl` (append-only): início/fim/erro e duração de cada nó; cada chamada ao LLM com modelo,
   versão do prompt, **sha256 do prompt**, tool calls e uso de tokens; cada tool com argumentos e saída;
   cada **decisão** (guardrail aprovado/reprovado, fallback, tool bloqueada, sanitização).
-- `audit/<run_id>.manifest.json`: sha256 da base, data máxima, período, fontes de notícia, resultado dos
-  guardrails, tentativas, avisos, caminho do relatório.
+- `audit/<run_id>.manifest.json`: sha256 da base, data máxima, período, fontes de notícia, sha256 do
+  snapshot `noticias.json`, resultado dos guardrails, tentativas, avisos, caminho do relatório.
+- Reprodutibilidade: `report --news-from <execução>/noticias.json` refaz o relatório com as mesmas notícias.
 - No relatório: rótulos **[BASE PRF]** / **[NOTÍCIA n]** por parágrafo, lista de notícias com link e seção
   *Transparência e governança*.
 - Prompts versionados (`agent/prompts.py::PROMPT_VERSION`).
@@ -116,19 +125,18 @@ A base "por pessoa" tem idade, sexo, estado físico e tipo de envolvido. Políti
 | Linhas individuais (por pessoa) | **Nunca** gravadas em `processed/`: agregadas na ingestão (dia × UF × faixa etária × sexo × estado físico × envolvido) |
 | Idade exata | Convertida em faixas (0-17, 18-29, 30-44, 45-59, 60+); idades impossíveis → "Não informado" |
 | Recortes pequenos | Células com n < 5 → `"<5"` (evita reidentificação, ex.: "mulher 60+ morta no km X no dia Y") |
+| Dedução por subtração | Supressão complementar: se um grupo tem uma única célula `"<5"`, a menor visível vira `"suprimido"` (o total de mortes é público); grupo só com células `<5` é omitido inteiro |
 | `id`, `pesid`, `id_veiculo`, marca, ano do veículo, lat/long, horário, município | Proibidos no contexto do LLM (`FORBIDDEN_FIELDS`) |
 | Contexto do LLM | `assert_llm_safe`: allowlist de chaves de topo + busca recursiva de campos proibidos |
 | Testemunhas | Excluídas do perfil de vítimas |
 | Notícias | PII (CPF, placa, e-mail, telefone) mascarada antes de entrar no prompt; saída também é checada |
-
-Limitação conhecida: supressão primária apenas (sem supressão complementar); aceitável para PoC, ver backlog.
 
 ## 7. Clean code e testes
 
 - Camadas separadas: dados (`data/`), métricas puras (`metrics.py`), agente (`agent/`), políticas
   (`guardrails.py`, `data/privacy.py`), auditoria (`audit.py`), apresentação (`report.py`, `charts.py`).
 - Tipos com pydantic; nada de dicionário solto atravessando camadas.
-- **36 testes** (`pytest`): parsing real do formato PRF, métricas sobre base sintética com resultado
+- **55 testes** (`pytest`, incluindo o conjunto golden): parsing real do formato PRF, métricas sobre base sintética com resultado
   conhecido, privacidade, guardrails (injeção, alucinação numérica, causa de notícia, PII) e o grafo ponta a
   ponta — inclusive um LLM "preguiçoso" (não chama tools) e um "alucinador" (fallback e sanitização auditados).
 - `ruff check` + `ruff format` limpos.
@@ -157,5 +165,4 @@ reports/exemplos/ relatórios BR e SC + trilhas de auditoria
 
 ## Próximos passos
 
-Ver `tasks.md`: conjunto *golden* de avaliação para guardrails/alucinação, exemplos com LLM real, supressão
-complementar, cache de notícias por execução e interface web.
+Interface web; ampliar o conjunto golden com saídas reais do LLM reprovadas pelos guardrails.

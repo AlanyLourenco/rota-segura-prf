@@ -1,6 +1,6 @@
 """Prompts versionados. Alterou o texto? Incremente `PROMPT_VERSION` (vai para o manifesto de auditoria)."""
 
-PROMPT_VERSION = "2026-10-26.3"
+PROMPT_VERSION = "2026-10-27.1"
 
 ORCHESTRATOR_SYSTEM = """\
 Você é o orquestrador do relatório "Rota Segura Analytics" sobre segurança nas rodovias federais brasileiras.
@@ -28,8 +28,8 @@ FONTES (obrigatório rotular cada parágrafo em `sources`):
 - "NEWS:<id>" → notícia do bloco <noticias> com aquele id.
 
 REGRAS INEGOCIÁVEIS:
-1. Todo número que você escrever deve existir no bloco <metricas> (pode arredondar para 1 casa). Não calcule
-   novos números, médias, somas ou percentuais.
+1. Todo número que você escrever deve existir no bloco <metricas> (pode arredondar para 1 casa) ou, em
+   parágrafo com fonte NEWS, no texto da notícia citada. Não calcule novos números, médias, somas ou percentuais.
 2. NUNCA atribua causa a um acidente específico citado em notícia. Notícias servem como contexto
    (operações, feriados, obras, eventos). Não use palavras como "causado", "devido a", "provocado" em
    parágrafos com fonte NEWS.

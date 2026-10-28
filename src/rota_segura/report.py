@@ -73,7 +73,8 @@ Trecho = segmento de 1 km (km inteiro). Ordenação: nº de acidentes; desempate
 {% if victim_profile %}
 ## 3. Perfil agregado das vítimas graves e fatais **[BASE PRF — anonimizado]**
 
-Contagens agregadas da base "por pessoa"; células com menos de 5 pessoas aparecem como `<5` (LGPD).
+Contagens agregadas da base "por pessoa"; células com menos de 5 pessoas aparecem como `<5` e, quando
+uma delas é a única do grupo, outra célula aparece como `suprimido` para impedir dedução pelo total (LGPD).
 
 {% for dim, rows in victim_profile.items() %}**{{ dim.replace('_', ' ').capitalize() }}:** \
 {% for r in rows %}{{ r.estado_fisico }} · {{ r.grupo }}: {{ r.n }}{{ "; " if not loop.last }}{% endfor %}

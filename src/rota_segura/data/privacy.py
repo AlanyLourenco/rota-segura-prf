@@ -6,6 +6,9 @@ Princípios:
 - Allowlist: só as chaves em `LLM_ALLOWED_FIELDS` podem compor o contexto enviado ao LLM.
 - Supressão: em recortes de pessoas, células com n < `min_cell_size` viram "<5" (evita reidentificação
   em recortes pequenos, ex.: "uma mulher de 60+ anos morta na BR-xxx no dia tal").
+- Supressão complementar: se um grupo (ex.: óbitos) tem uma única célula "<5", a menor célula visível
+  também é ocultada, pois o total do grupo é público (`deaths`) e a célula seria deduzível por subtração.
+  Grupo só com células pequenas é omitido inteiro (ex.: 3 óbitos, todos homens 60+, numa UF pequena).
 """
 
 from __future__ import annotations
@@ -28,6 +31,7 @@ FORBIDDEN_FIELDS = frozenset({
 AGE_BINS = [0, 18, 30, 45, 60, 111]
 AGE_LABELS = ["0-17", "18-29", "30-44", "45-59", "60+"]
 NOT_INFORMED = "Não informado"
+SECONDARY_MARK = "suprimido"
 
 
 class PrivacyViolation(ValueError):
@@ -74,6 +78,20 @@ def bin_people(people: pd.DataFrame) -> pd.DataFrame:
     return frame.dropna(subset=["data"]).value_counts().reset_index(name="n")
 
 
-def suppress_small_cells(rows: list[dict[str, Any]], min_cell_size: int = 5) -> list[dict[str, Any]]:
-    """Substitui contagens < `min_cell_size` por "<min" antes de qualquer exposição."""
-    return [{**row, "n": row["n"] if row["n"] >= min_cell_size else f"<{min_cell_size}"} for row in rows]
+def suppress_small_cells(
+    rows: list[dict[str, Any]], min_cell_size: int = 5, group_key: str | None = "estado_fisico"
+) -> list[dict[str, Any]]:
+    """Substitui contagens < `min_cell_size` por "<min" e aplica supressão complementar por grupo."""
+    out = [{**row, "n": row["n"] if row["n"] >= min_cell_size else f"<{min_cell_size}"} for row in rows]
+    groups: dict[Any, list[int]] = {}
+    for idx, row in enumerate(rows):
+        groups.setdefault(row.get(group_key) if group_key else None, []).append(idx)
+    dropped: set[int] = set()
+    for idxs in groups.values():
+        primary = [i for i in idxs if rows[i]["n"] < min_cell_size]
+        visible = [i for i in idxs if rows[i]["n"] >= min_cell_size]
+        if primary and not visible:  # só células pequenas: com o total público, o grupo inteiro seria revelado
+            dropped.update(idxs)
+        elif len(primary) == 1:
+            out[min(visible, key=lambda i: rows[i]["n"])]["n"] = SECONDARY_MARK
+    return [row for idx, row in enumerate(out) if idx not in dropped]

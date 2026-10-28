@@ -34,7 +34,7 @@
 
 ## R6 — Guardrails
 1. WHEN a entrada do usuário contém pedidos fora do escopo ou injeção de prompt, THE SYSTEM SHALL recusar ou ignorar.
-2. WHEN o texto do LLM cita um número que não existe nas métricas calculadas, THE SYSTEM SHALL sinalizar/remover.
+2. WHEN o texto do LLM cita um número que não existe nas métricas calculadas nem nas notícias citadas no parágrafo, THE SYSTEM SHALL sinalizar/remover.
 3. WHEN o texto do LLM contém padrão de dado pessoal (CPF, placa, nome+idade), THE SYSTEM SHALL bloquear.
 4. IF a validação falhar após N tentativas, THEN THE SYSTEM SHALL publicar o relatório só com métricas e um aviso.
 
@@ -42,8 +42,9 @@
 1. THE SYSTEM SHALL gravar em JSONL cada passo: nó do grafo, tool chamada, argumentos, resumo da saída, decisão de guardrail, modelo e tempo.
 2. THE SYSTEM SHALL gerar um manifesto por execução (run_id, hash dos dados, versão do prompt, fontes).
 3. THE SYSTEM SHALL anexar ao relatório a seção "Transparência" com fontes e decisões.
+4. THE SYSTEM SHALL gravar as notícias usadas em um snapshot por execução (hash no manifesto) e permitir reexecutar o relatório a partir dele.
 
 ## R8 — Dados sensíveis (LGPD)
 1. THE SYSTEM SHALL manter allowlist explícita de campos que podem chegar ao LLM.
-2. THE SYSTEM SHALL agregar dados por pessoa (idade, sexo, estado físico) em faixas e suprimir células com n < 5.
+2. THE SYSTEM SHALL agregar dados por pessoa (idade, sexo, estado físico) em faixas e suprimir células com n < 5, aplicando supressão complementar quando um grupo tiver uma única célula suprimida e omitindo o grupo que só tiver células pequenas.
 3. THE SYSTEM SHALL NOT enviar ids, coordenadas exatas ou registros individuais ao LLM.

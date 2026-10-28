@@ -16,11 +16,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from rota_segura.config import ROOT
+
 _MAX_STR = 2000
 
 
 def _summarize(value: Any) -> Any:
-    """Trunca strings longas para manter a trilha legível sem perder rastreabilidade (hash)."""
+    """Trunca strings longas (com hash) e grava caminhos do projeto como relativos (sem expor a máquina)."""
+    if isinstance(value, Path):
+        return value.relative_to(ROOT).as_posix() if value.is_relative_to(ROOT) else str(value)
     if isinstance(value, str) and len(value) > _MAX_STR:
         digest = hashlib.sha256(value.encode()).hexdigest()[:12]
         return f"{value[:_MAX_STR]}… [truncado, {len(value)} chars, sha256:{digest}]"

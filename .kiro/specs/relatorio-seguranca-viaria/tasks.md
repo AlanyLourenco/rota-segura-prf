@@ -16,7 +16,7 @@
 - [x] 12. PDF do diagrama de arquitetura (`docs/arquitetura.pdf`)
 - [x] 13. README completo + relatório de exemplo em `reports/`
 - [x] 14. Ingestão da base por pessoa (perfil agregado de vítimas) no fluxo padrão (R8.2)
-- [ ] 15. Avaliação: conjunto de casos (golden) p/ guardrails e alucinação (R6)
-- [ ] 16. Rodar com LLM real e versionar exemplo para BR e uma UF (exemplos atuais: modo offline)
-- [ ] 17. Supressão complementar no perfil de vítimas (R8.2)
-- [ ] 18. Cache de notícias por execução (reprodutibilidade) (R7)
+- [x] 15. Avaliação: conjunto de casos (golden) p/ guardrails e alucinação (R6)
+- [x] 16. Rodar com LLM real e versionar exemplo para BR e uma UF (exemplos atuais: modo offline)
+- [x] 17. Supressão complementar no perfil de vítimas (R8.2)
+- [x] 18. Cache de notícias por execução (reprodutibilidade) (R7)

@@ -19,6 +19,8 @@ src/rota_segura/
   audit.py           # trilha de auditoria JSONL + manifesto da execução
   report.py          # render Markdown/HTML
   cli.py             # entrypoint
+  evals.py           # runner do conjunto golden dos guardrails
+evals/               # casos golden (JSON, dados sintéticos)
 tests/               # unit tests por módulo
 docs/                # arquitetura (PDF), decisões (ADR)
 reports/             # relatórios gerados (exemplos versionados)
