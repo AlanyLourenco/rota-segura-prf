@@ -40,3 +40,4 @@ O writer devolve JSON `{sections:[{title, paragraphs:[{text, sources:["BASE"|"NE
 
 ## Testes
 Unitários para ingestão (parsing), métricas (fixture sintética), privacidade, guardrails, e o grafo em modo offline.
+Conjunto golden `evals/golden_guardrails.json` (casos de entrada/saída com decisão esperada), rodado no pytest e em `rota-segura eval`.

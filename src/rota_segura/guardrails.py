@@ -69,7 +69,8 @@ def redact_pii(text: str) -> str:
 # --------------------------------------------------------------------------- entrada
 
 _INJECTION = re.compile(
-    r"(ignore|desconsidere|esque[cç]a).{0,40}(instru|regras|anterior|prompt)|system prompt|"
+    r"(ignore|desconsidere|esque[cç]a|forget|disregard).{0,40}(instru|regras|rules|anterior|previous|prompt)|"
+    r"system prompt|"
     r"you are now|voc[eê] agora [eé]|jailbreak|<\s*/?\s*(system|instructions?)\s*>",
     re.I,
 )

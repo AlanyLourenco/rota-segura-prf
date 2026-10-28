@@ -1,4 +1,4 @@
-"""CLI: `rota-segura ingest` e `rota-segura report [--uf SC] [--focus ...] [--offline]`."""
+"""CLI: `rota-segura ingest`, `rota-segura report [--uf SC] [--focus ...] [--offline]` e `rota-segura eval`."""
 
 from __future__ import annotations
 
@@ -78,6 +78,19 @@ def cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_eval(args: argparse.Namespace) -> int:
+    from rota_segura.evals import DEFAULT_CASES, run_suite
+
+    result = run_suite(Path(args.cases) if args.cases else DEFAULT_CASES)
+    for category, (ok, total) in sorted(result.by_category.items()):
+        print(f"{category:<10} {ok}/{total}")
+    for r in result.results:
+        if not r.ok:
+            print(f"FALHOU {r.id} (regras obtidas: {r.got_rules})")
+    print(f"total      {result.ok}/{result.total}")
+    return 0 if result.ok == result.total else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     parser = argparse.ArgumentParser(prog="rota-segura", description=__doc__)
@@ -96,6 +109,10 @@ def main(argv: list[str] | None = None) -> int:
     p_report.add_argument("--news-from", help="Reusa o snapshot noticias.json de uma execução anterior")
     p_report.add_argument("--out", help="Diretório de saída")
     p_report.set_defaults(func=cmd_report)
+
+    p_eval = sub.add_parser("eval", help="Roda o conjunto golden dos guardrails")
+    p_eval.add_argument("--cases", help="Arquivo JSON de casos (padrão: evals/golden_guardrails.json)")
+    p_eval.set_defaults(func=cmd_eval)
 
     args = parser.parse_args(argv)
     return args.func(args)
