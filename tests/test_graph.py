@@ -100,3 +100,12 @@ def test_offline_run_replays_news_snapshot(cfg, synthetic_parquet, tmp_path, mon
     app = build_graph(deps)
     app.invoke({"uf": "SC", "focus": None}, {"recursion_limit": 40})
     assert ctx.news == items
+
+
+def test_news_text_includes_published_date_pt_br():
+    from rota_segura.agent.graph import _news_text
+    from rota_segura.guardrails import numbers_in
+    from rota_segura.news import NewsItem
+
+    item = NewsItem(id=1, title="Operação", source="s", url="u", published="2026-06-20", snippet="", provider="rss")
+    assert {20.0, 6.0, 2026.0} <= numbers_in(_news_text(item))

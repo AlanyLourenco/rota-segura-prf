@@ -5,6 +5,7 @@ from rota_segura.guardrails import (
     InputRejected,
     Paragraph,
     Section,
+    numbers_in,
     redact_pii,
     untraceable_numbers,
     validate_draft,
@@ -80,3 +81,25 @@ def test_pii_in_output_blocked_and_redacted():
 def test_clean_draft_passes():
     par = Paragraph(text="Foram 673 acidentes contra 644, alta de 4,5%.", sources=["BASE"])
     assert validate_draft(_draft(par, headline="673 acidentes no período"), ALLOWED, set()).passed
+
+
+def test_numbers_in_parses_pt_br():
+    assert numbers_in("1.234 e 9,6%") == {1234.0, 9.6}
+
+
+def test_invented_number_in_mixed_paragraph_fails():
+    par = Paragraph(text="A operação noticiada coincide com 1.234 acidentes.", sources=["BASE", "NEWS:1"])
+    report = validate_draft(_draft(par), {10.0}, {1}, news_numbers={1: {3.0}})
+    assert [(i.rule, i.detail) for i in report.issues] == [("numero_nao_rastreavel", "1.234")]
+
+
+def test_news_only_paragraph_number_must_come_from_news():
+    par = Paragraph(text="A notícia relata 3 mortos em colisão na rodovia.", sources=["NEWS:1"])
+    assert validate_draft(_draft(par), ALLOWED, {1}, news_numbers={1: {3.0}}).passed
+    report = validate_draft(_draft(par), ALLOWED, {1}, news_numbers={1: {2.0}})
+    assert [i.rule for i in report.issues] == ["numero_nao_rastreavel"]
+
+
+def test_mixed_paragraph_accepts_base_and_news_numbers():
+    par = Paragraph(text="Foram 673 acidentes; a operação noticiada mobilizou 120 agentes.", sources=["BASE", "NEWS:1"])
+    assert validate_draft(_draft(par), ALLOWED, {1}, news_numbers={1: {120.0}}).passed

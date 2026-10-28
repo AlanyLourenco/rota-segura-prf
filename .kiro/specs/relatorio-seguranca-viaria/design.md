@@ -34,7 +34,7 @@ Campos permitidos ao LLM: ver `privacy.LLM_ALLOWED_FIELDS`.
 ## Validação de saída (writer → output_guard)
 O writer devolve JSON `{sections:[{title, paragraphs:[{text, sources:["BASE"|"NEWS:n"]}]}]}`.
 1. Todo parágrafo precisa ter `sources` não vazio e IDs de notícia existentes.
-2. Números no texto rotulado BASE precisam bater (tolerância de arredondamento) com o `MetricsBundle`.
+2. Todo número precisa bater (tolerância de arredondamento) com o `MetricsBundle` (se o parágrafo cita BASE) ou com título/snippet/data das notícias citadas.
 3. Parágrafo com fonte só-NEWS não pode conter vocabulário de causa da base ("causa", nomes de causas).
 4. Regex de PII (CPF, placa Mercosul/antiga, e-mail, telefone).
 

@@ -34,7 +34,7 @@
 
 ## R6 — Guardrails
 1. WHEN a entrada do usuário contém pedidos fora do escopo ou injeção de prompt, THE SYSTEM SHALL recusar ou ignorar.
-2. WHEN o texto do LLM cita um número que não existe nas métricas calculadas, THE SYSTEM SHALL sinalizar/remover.
+2. WHEN o texto do LLM cita um número que não existe nas métricas calculadas nem nas notícias citadas no parágrafo, THE SYSTEM SHALL sinalizar/remover.
 3. WHEN o texto do LLM contém padrão de dado pessoal (CPF, placa, nome+idade), THE SYSTEM SHALL bloquear.
 4. IF a validação falhar após N tentativas, THEN THE SYSTEM SHALL publicar o relatório só com métricas e um aviso.
 

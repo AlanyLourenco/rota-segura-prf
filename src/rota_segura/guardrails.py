@@ -129,6 +129,11 @@ def _strip_accents(text: str) -> str:
     return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
 
 
+def numbers_in(text: str) -> set[float]:
+    """Números citados num texto (ex.: título + snippet de notícia), no mesmo parser do guardrail."""
+    return {_parse_number(token) for token in _NUMBER.findall(text)}
+
+
 def untraceable_numbers(text: str, allowed: set[float]) -> list[str]:
     """Números do texto que não correspondem a nenhuma métrica calculada."""
     bad = []
@@ -141,7 +146,11 @@ def untraceable_numbers(text: str, allowed: set[float]) -> list[str]:
     return bad
 
 
-def validate_draft(draft: Draft, allowed_numbers: set[float], news_ids: set[int]) -> GuardReport:
+def validate_draft(
+    draft: Draft, allowed_numbers: set[float], news_ids: set[int], news_numbers: dict[int, set[float]] | None = None
+) -> GuardReport:
+    """Valida o rascunho. Números só podem vir das métricas (fonte BASE) ou das notícias citadas no parágrafo."""
+    news_numbers = news_numbers or {}
     issues: list[GuardIssue] = []
     if find_pii(draft.headline):
         issues.append(GuardIssue(rule="pii", detail="PII no headline", location="headline"))
@@ -151,11 +160,13 @@ def validate_draft(draft: Draft, allowed_numbers: set[float], news_ids: set[int]
     for s_idx, section in enumerate(draft.sections):
         for p_idx, par in enumerate(section.paragraphs):
             loc = f"sections[{s_idx}].paragraphs[{p_idx}]"
-            issues.extend(_check_paragraph(par, loc, allowed_numbers, news_ids))
+            issues.extend(_check_paragraph(par, loc, allowed_numbers, news_ids, news_numbers))
     return GuardReport(passed=not issues, issues=issues)
 
 
-def _check_paragraph(par: Paragraph, loc: str, allowed: set[float], news_ids: set[int]) -> list[GuardIssue]:
+def _check_paragraph(
+    par: Paragraph, loc: str, allowed: set[float], news_ids: set[int], news_numbers: dict[int, set[float]]
+) -> list[GuardIssue]:
     issues: list[GuardIssue] = []
     if not par.sources:
         return [GuardIssue(rule="sem_fonte", detail="Parágrafo sem fonte rotulada", location=loc)]
@@ -173,10 +184,10 @@ def _check_paragraph(par: Paragraph, loc: str, allowed: set[float], news_ids: se
     if found := find_pii(par.text):
         issues.append(GuardIssue(rule="pii", detail=", ".join(found), location=loc))
 
-    uses_base = BASE_SOURCE in par.sources
-    if uses_base and not cited_news:
-        for bad in untraceable_numbers(par.text, allowed):
-            issues.append(GuardIssue(rule="numero_nao_rastreavel", detail=bad, location=loc))
+    traceable = set(allowed) if BASE_SOURCE in par.sources else set()
+    traceable |= set().union(*(news_numbers.get(i, set()) for i in cited_news))
+    for bad in untraceable_numbers(par.text, traceable):
+        issues.append(GuardIssue(rule="numero_nao_rastreavel", detail=bad, location=loc))
 
     # Atribuição causal só pode vir da base. Notícia (sozinha ou misturada à base) + verbo causal = bloqueio.
     if cited_news and _CAUSAL.search(_strip_accents(par.text)) is not None:
