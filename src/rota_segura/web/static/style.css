@@ -205,7 +205,7 @@ button:disabled { opacity: 0.6; cursor: progress; }
 .report h1 { font-size: 26px; margin: 4px 0 12px; }
 .report h2 { font-size: 19px; margin: 32px 0 10px; padding-top: 14px; border-top: 1px solid var(--line); }
 .report h3 { font-size: 16px; margin: 20px 0 8px; }
-.report blockquote { margin: 0 0 16px; padding: 10px 14px; border-left: 4px solid var(--accent); background: var(--bg); border-radius: 0 8px 8px 0; }
+.report blockquote { margin: 0 0 16px; padding: 10px 14px; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; }
 .report blockquote p { margin: 4px 0; }
 .report table { border-collapse: collapse; width: 100%; margin: 8px 0 16px; font-size: 14px; }
 .report th, .report td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
