@@ -20,3 +20,4 @@
 - [x] 16. Rodar com LLM real e versionar exemplo para BR e uma UF (exemplos atuais: modo offline)
 - [x] 17. Supressão complementar no perfil de vítimas (R8.2)
 - [x] 18. Cache de notícias por execução (reprodutibilidade) (R7)
+- [x] 19. Interface web local: FastAPI + SSE da trilha de auditoria, layout lado a lado, relatórios anteriores (R9)

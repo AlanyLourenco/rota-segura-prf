@@ -38,6 +38,9 @@ O writer devolve JSON `{sections:[{title, paragraphs:[{text, sources:["BASE"|"NE
 3. Parágrafo com fonte só-NEWS não pode conter vocabulário de causa da base ("causa", nomes de causas).
 4. Regex de PII (CPF, placa Mercosul/antiga, e-mail, telefone).
 
+## Interface web (R9)
+`rota-segura web` → FastAPI em 127.0.0.1. `GET /api/stream` roda `service.run_report` numa thread e transmite por SSE cada evento do `AuditLogger` (via `listener`), terminando com `done` (chave do relatório) ou `failed` (status + motivo). `GET /api/runs` lista relatórios em `reports/` e `GET /api/runs/{key}` devolve HTML saneado, eventos do JSONL e manifesto. O frontend é estático (HTML/CSS/JS sem build), sob CSP `script-src 'self'`.
+
 ## Testes
 Unitários para ingestão (parsing), métricas (fixture sintética), privacidade, guardrails, e o grafo em modo offline.
 Conjunto golden `evals/golden_guardrails.json` (casos de entrada/saída com decisão esperada), rodado no pytest e em `rota-segura eval`.

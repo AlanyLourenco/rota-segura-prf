@@ -18,3 +18,15 @@ def test_paths_outside_project_are_kept(tmp_path):
     audit = AuditLogger(tmp_path, run_id="t")
     manifest = json.loads(audit.write_manifest(report=tmp_path / "relatorio.md").read_text("utf-8"))
     assert manifest["report"] == str(tmp_path / "relatorio.md")
+
+
+def test_listener_receives_each_event(tmp_path):
+    seen = []
+    audit = AuditLogger(tmp_path, run_id="t", listener=seen.append)
+    with audit.step("render"):
+        audit.decision("output_guard", "aprovado", "0 problema(s)")
+    assert [(e["event"], e["node"]) for e in seen] == [
+        ("start", "render"),
+        ("decision", "output_guard"),
+        ("end", "render"),
+    ]

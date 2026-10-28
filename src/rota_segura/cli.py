@@ -1,4 +1,4 @@
-"""CLI: `rota-segura ingest`, `rota-segura report [--uf SC] [--focus ...] [--offline]` e `rota-segura eval`."""
+"""CLI: `rota-segura ingest`, `report [--uf SC] [--focus ...] [--offline]`, `eval` e `web` (interface local)."""
 
 from __future__ import annotations
 
@@ -8,18 +8,6 @@ import sys
 from pathlib import Path
 
 from rota_segura.config import settings
-from rota_segura.guardrails import InputRejected
-
-
-def _build_llms(offline: bool):
-    if offline:
-        from rota_segura.agent.offline import OfflineOrchestrator, OfflineWriter
-
-        return OfflineOrchestrator(), OfflineWriter()
-    from langchain.chat_models import init_chat_model
-
-    llm = init_chat_model(settings.llm_model, temperature=0)
-    return llm, llm
 
 
 def cmd_ingest(args: argparse.Namespace) -> int:
@@ -31,50 +19,34 @@ def cmd_ingest(args: argparse.Namespace) -> int:
 
 
 def cmd_report(args: argparse.Namespace) -> int:
-    from rota_segura.agent.graph import AgentDeps, build_graph
-    from rota_segura.agent.tools import ToolContext
-    from rota_segura.audit import AuditLogger
-    from rota_segura.data.ingest import file_sha256
-    from rota_segura.metrics import MetricsEngine
-    from rota_segura.news import save_news
+    from rota_segura.service import run_report
 
-    audit = AuditLogger(settings.audit_dir)
-    scope = (args.uf or "BR").upper()
-    out_dir = Path(args.out) if args.out else settings.reports_dir / f"{scope}-{audit.run_id}"
-    orchestrator_llm, writer_llm = _build_llms(args.offline)
-    news_from = Path(args.news_from) if args.news_from else None
-    ctx = ToolContext(
-        cfg=settings, engine=MetricsEngine(), uf=None, output_dir=out_dir, offline_news=args.no_news,
-        news_snapshot=news_from,
+    result = run_report(
+        settings, uf=args.uf, focus=args.focus, offline=args.offline, no_news=args.no_news,
+        news_from=Path(args.news_from) if args.news_from else None, out_dir=Path(args.out) if args.out else None,
     )  # fmt: skip
-    app = build_graph(AgentDeps(ctx=ctx, audit=audit, orchestrator_llm=orchestrator_llm, writer_llm=writer_llm))
-
-    try:
-        final = app.invoke({"uf": args.uf, "focus": args.focus}, {"recursion_limit": 40})
-    except InputRejected as exc:
-        audit.decision("input_guard", "rejeitado", str(exc))
-        audit.write_manifest(status="rejected", reason=str(exc))
-        print(f"Requisição rejeitada: {exc}", file=sys.stderr)
+    if result.status == "rejected":
+        print(f"Requisição rejeitada: {result.reason}", file=sys.stderr)
         return 2
-    except Exception as exc:  # falha do provedor de LLM (cota, indisponibilidade) fica registrada
-        reason = f"{type(exc).__name__}: {str(exc)[:500]}"
-        audit.write_manifest(status="error", reason=reason, llm_model=settings.llm_model)
-        print(f"Falha na execução (registrada em {audit.manifest_path}): {reason[:200]}", file=sys.stderr)
+    if result.status == "error":
+        print(f"Falha na execução (registrada em {result.manifest_path}): {result.reason[:200]}", file=sys.stderr)
         return 1
+    print(f"Relatório: {result.report_path}\nAuditoria: {result.audit_path}")
+    return 0
 
-    news_snapshot = out_dir / "noticias.json"
-    news_sha256 = save_news(ctx.news or [], news_snapshot)
-    audit.write_manifest(
-        status="ok", news_snapshot=news_snapshot, news_sha256=news_sha256, news_replayed=news_from is not None,
-        scope=ctx.metrics.scope, focus=final.get("focus"), offline=args.offline,
-        llm_model=settings.llm_model if not args.offline else "offline",
-        data_sha256=file_sha256(settings.occurrences_parquet), data_max_date=ctx.metrics.data_max_date,
-        period=ctx.metrics.period.model_dump(), guard_passed=final["guard"].passed,
-        writer_attempts=final["attempts"], warnings=final["warnings"],
-        news_sources=[{"id": n.id, "url": n.url, "provider": n.provider} for n in ctx.news or []],
-        report=Path(final["report_path"]),
-    )  # fmt: skip
-    print(f"Relatório: {final['report_path']}\nAuditoria: {audit.path}")
+
+def cmd_web(args: argparse.Namespace) -> int:
+    import webbrowser
+
+    import uvicorn
+
+    from rota_segura.web.app import create_app
+
+    url = f"http://127.0.0.1:{args.port}"
+    print(f"Rota Segura PRF em {url} (Ctrl+C para encerrar)")
+    if not args.no_browser:
+        webbrowser.open(url)
+    uvicorn.run(create_app(settings), host="127.0.0.1", port=args.port, log_level="warning")
     return 0
 
 
@@ -113,6 +85,11 @@ def main(argv: list[str] | None = None) -> int:
     p_eval = sub.add_parser("eval", help="Roda o conjunto golden dos guardrails")
     p_eval.add_argument("--cases", help="Arquivo JSON de casos (padrão: evals/golden_guardrails.json)")
     p_eval.set_defaults(func=cmd_eval)
+
+    p_web = sub.add_parser("web", help="Abre a interface web local (127.0.0.1)")
+    p_web.add_argument("--port", type=int, default=8000)
+    p_web.add_argument("--no-browser", action="store_true", help="Não abre o navegador automaticamente")
+    p_web.set_defaults(func=cmd_web)
 
     args = parser.parse_args(argv)
     return args.func(args)

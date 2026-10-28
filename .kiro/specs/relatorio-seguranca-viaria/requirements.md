@@ -48,3 +48,10 @@
 1. THE SYSTEM SHALL manter allowlist explícita de campos que podem chegar ao LLM.
 2. THE SYSTEM SHALL agregar dados por pessoa (idade, sexo, estado físico) em faixas e suprimir células com n < 5, aplicando supressão complementar quando um grupo tiver uma única célula suprimida e omitindo o grupo que só tiver células pequenas.
 3. THE SYSTEM SHALL NOT enviar ids, coordenadas exatas ou registros individuais ao LLM.
+
+## R9 — Interface web local
+1. THE SYSTEM SHALL oferecer uma interface web local (`rota-segura web`, só em 127.0.0.1) com formulário de UF, foco opcional e modo offline.
+2. WHILE um relatório é gerado, THE SYSTEM SHALL exibir ao vivo os eventos da trilha de auditoria (nós, tools, decisões de guardrail) ao lado do relatório.
+3. THE SYSTEM SHALL usar o mesmo fluxo da CLI (guardrails, auditoria, manifesto e snapshot de notícias), sem lógica de negócio própria.
+4. WHEN a entrada é recusada ou o provedor de LLM falha, THE SYSTEM SHALL mostrar o motivo na tela (e no manifesto).
+5. THE SYSTEM SHALL listar os relatórios já gerados (incluindo os exemplos versionados) com sua linha do tempo de auditoria, sem chamar o LLM.

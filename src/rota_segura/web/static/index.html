@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rota Segura PRF</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div>
+        <h1>Rota Segura</h1>
+        <p>Relatórios de segurança nas rodovias federais · base aberta da PRF + agente LLM auditado</p>
+      </div>
+    </div>
+    <span id="model-badge" class="badge" hidden></span>
+  </header>
+
+  <main class="layout">
+    <aside class="side">
+      <section class="panel">
+        <h2>Nova pesquisa</h2>
+        <form id="report-form" autocomplete="off">
+          <label for="uf">Abrangência</label>
+          <select id="uf" name="uf">
+            <option value="">Brasil (todas as UFs)</option>
+          </select>
+
+          <label for="focus">Foco <span class="hint">opcional</span></label>
+          <input id="focus" name="focus" maxlength="200" placeholder="ex.: feriados e obras na BR-101">
+
+          <label class="check"><input type="checkbox" id="offline" name="offline"> Modo offline <span class="hint">LLM determinístico, sem chave nem cota</span></label>
+          <label class="check"><input type="checkbox" id="no_news" name="no_news"> Sem notícias <span class="hint">não acessa a internet</span></label>
+
+          <p id="key-warning" class="note" hidden>Nenhuma chave de LLM encontrada no <code>.env</code>; o modo offline foi ativado.</p>
+          <button id="submit" type="submit">Gerar relatório</button>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Agente ao vivo</h2>
+          <span id="run-status" class="status" hidden></span>
+        </div>
+        <p id="timeline-empty" class="muted">Os passos do agente aparecem aqui: guardrails, tools, redação e decisões, direto da trilha de auditoria.</p>
+        <ol id="timeline" class="timeline"></ol>
+      </section>
+
+      <section class="panel">
+        <h2>Relatórios anteriores</h2>
+        <p class="muted small">Abrem sem chamar o LLM, com a linha do tempo da auditoria.</p>
+        <ul id="runs" class="runs"></ul>
+      </section>
+    </aside>
+
+    <section class="main panel" aria-live="polite">
+      <div id="report-empty" class="empty">
+        <h2>Nenhum relatório aberto</h2>
+        <p>Gere uma pesquisa ou abra um relatório anterior.</p>
+      </div>
+      <div id="report-error" class="error" hidden></div>
+      <div id="report-meta" class="report-meta" hidden></div>
+      <article id="report" class="report" hidden></article>
+      <details id="manifest" class="manifest" hidden>
+        <summary>Manifesto da execução (auditoria)</summary>
+        <pre id="manifest-json"></pre>
+      </details>
+    </section>
+  </main>
+</body>
+</html>

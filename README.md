@@ -21,6 +21,7 @@ python -m venv .venv
 cp .env.example .env                           # coloque sua GOOGLE_API_KEY (Gemini Flash, plano gratuito)
 
 rota-segura ingest                             # baixa e normaliza a base PRF (2024–2026)
+rota-segura web                                # interface local em http://127.0.0.1:8000 (agente ao vivo + relatório)
 rota-segura report                             # relatório Brasil
 rota-segura report --uf SC --focus "feriados e obras na BR-101"
 rota-segura report --uf SC --offline           # sem chave de API: LLM determinístico (mesmo grafo)
@@ -36,6 +37,16 @@ Saídas: `reports/<UF>-<run_id>/relatorio.md` (+ PNGs e `noticias.json`, snapsho
 > falhou por cota do provedor (429), registrada no manifesto com `status=error`, sem fallback silencioso.
 
 ---
+
+### Interface web local
+
+`rota-segura web` abre no navegador uma página com o **layout lado a lado**:
+
+- **À esquerda:** o formulário (UF, foco, modo offline, sem notícias) e o **agente ao vivo**. Cada evento da trilha de auditoria (nós, tools com duração, decisões dos guardrails com os problemas encontrados, fallback, sanitização) chega por SSE no momento em que é gravado.
+- **À direita:** o relatório completo e o manifesto da execução.
+- **Relatórios anteriores:** abrem sem chamar o LLM, com a linha do tempo reconstruída a partir do JSONL. Isso inclui os exemplos versionados.
+
+A interface usa o mesmo fluxo da CLI (`service.run_report`). O servidor escuta só em `127.0.0.1` e gera um relatório por vez, para não gastar cota em paralelo. O HTML do relatório é saneado (sem HTML bruto, só links http/https), já que ele contém títulos de notícias da internet, e a página roda sob CSP restrita. Sem chave de LLM no `.env`, o modo offline vem marcado.
 
 ## 1. Escolha da arquitetura
 
