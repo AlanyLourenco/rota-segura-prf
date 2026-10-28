@@ -42,6 +42,7 @@
 1. THE SYSTEM SHALL gravar em JSONL cada passo: nó do grafo, tool chamada, argumentos, resumo da saída, decisão de guardrail, modelo e tempo.
 2. THE SYSTEM SHALL gerar um manifesto por execução (run_id, hash dos dados, versão do prompt, fontes).
 3. THE SYSTEM SHALL anexar ao relatório a seção "Transparência" com fontes e decisões.
+4. THE SYSTEM SHALL gravar as notícias usadas em um snapshot por execução (hash no manifesto) e permitir reexecutar o relatório a partir dele.
 
 ## R8 — Dados sensíveis (LGPD)
 1. THE SYSTEM SHALL manter allowlist explícita de campos que podem chegar ao LLM.

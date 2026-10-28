@@ -79,3 +79,24 @@ def test_fallbacks_and_sanitization_are_audited(cfg, synthetic_parquet, tmp_path
     assert final["attempts"] == cfg.max_writer_attempts
     text = (tmp_path / "out" / "relatorio.md").read_text(encoding="utf-8")
     assert "99999" not in text and "dados preliminares" in text
+
+
+def test_offline_run_replays_news_snapshot(cfg, synthetic_parquet, tmp_path, monkeypatch):
+    from rota_segura.news import NewsItem, save_news
+
+    items = [NewsItem(id=1, title="Operação PRF no feriado", source="Agência Gov", url="https://exemplo.gov.br/1",
+                      published="2026-06-20", snippet="Fiscalização reforçada.", provider="rss")]  # fmt: skip
+    snapshot = tmp_path / "noticias.json"
+    save_news(items, snapshot)
+
+    def _no_network(*args, **kwargs):
+        raise AssertionError("busca de notícias não deveria ocorrer em replay")
+
+    monkeypatch.setattr("rota_segura.agent.tools.search_news", _no_network)
+    audit = AuditLogger(cfg.audit_dir, run_id="replay")
+    ctx = ToolContext(cfg=cfg, engine=MetricsEngine(synthetic_parquet, cfg), uf=None, output_dir=tmp_path / "out",
+                      news_snapshot=snapshot)  # fmt: skip
+    deps = AgentDeps(ctx=ctx, audit=audit, orchestrator_llm=OfflineOrchestrator(), writer_llm=OfflineWriter())
+    app = build_graph(deps)
+    app.invoke({"uf": "SC", "focus": None}, {"recursion_limit": 40})
+    assert ctx.news == items

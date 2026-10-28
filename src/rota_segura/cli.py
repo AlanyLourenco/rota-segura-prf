@@ -36,12 +36,17 @@ def cmd_report(args: argparse.Namespace) -> int:
     from rota_segura.audit import AuditLogger
     from rota_segura.data.ingest import file_sha256
     from rota_segura.metrics import MetricsEngine
+    from rota_segura.news import save_news
 
     audit = AuditLogger(settings.audit_dir)
     scope = (args.uf or "BR").upper()
     out_dir = Path(args.out) if args.out else settings.reports_dir / f"{scope}-{audit.run_id}"
     orchestrator_llm, writer_llm = _build_llms(args.offline)
-    ctx = ToolContext(cfg=settings, engine=MetricsEngine(), uf=None, output_dir=out_dir, offline_news=args.no_news)
+    news_from = Path(args.news_from) if args.news_from else None
+    ctx = ToolContext(
+        cfg=settings, engine=MetricsEngine(), uf=None, output_dir=out_dir, offline_news=args.no_news,
+        news_snapshot=news_from,
+    )  # fmt: skip
     app = build_graph(AgentDeps(ctx=ctx, audit=audit, orchestrator_llm=orchestrator_llm, writer_llm=writer_llm))
 
     try:
@@ -57,8 +62,11 @@ def cmd_report(args: argparse.Namespace) -> int:
         print(f"Falha na execução (registrada em {audit.manifest_path}): {reason[:200]}", file=sys.stderr)
         return 1
 
+    news_snapshot = out_dir / "noticias.json"
+    news_sha256 = save_news(ctx.news or [], news_snapshot)
     audit.write_manifest(
-        status="ok", scope=ctx.metrics.scope, focus=final.get("focus"), offline=args.offline,
+        status="ok", news_snapshot=news_snapshot, news_sha256=news_sha256, news_replayed=news_from is not None,
+        scope=ctx.metrics.scope, focus=final.get("focus"), offline=args.offline,
         llm_model=settings.llm_model if not args.offline else "offline",
         data_sha256=file_sha256(settings.occurrences_parquet), data_max_date=ctx.metrics.data_max_date,
         period=ctx.metrics.period.model_dump(), guard_passed=final["guard"].passed,
@@ -85,6 +93,7 @@ def main(argv: list[str] | None = None) -> int:
     p_report.add_argument("--focus", help="Foco opcional (ex.: 'feriados e obras')")
     p_report.add_argument("--offline", action="store_true", help="Usa LLM determinístico (sem API)")
     p_report.add_argument("--no-news", action="store_true", help="Não busca notícias (sem rede)")
+    p_report.add_argument("--news-from", help="Reusa o snapshot noticias.json de uma execução anterior")
     p_report.add_argument("--out", help="Diretório de saída")
     p_report.set_defaults(func=cmd_report)
 

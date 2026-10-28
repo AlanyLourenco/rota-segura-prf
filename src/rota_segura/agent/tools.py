@@ -16,7 +16,7 @@ from rota_segura.charts import build_charts
 from rota_segura.config import Settings
 from rota_segura.data.privacy import assert_llm_safe
 from rota_segura.metrics import MetricsBundle, MetricsEngine
-from rota_segura.news import NewsItem, search_news
+from rota_segura.news import NewsItem, load_news, search_news
 
 
 @dataclass
@@ -26,6 +26,7 @@ class ToolContext:
     uf: str | None
     output_dir: Path
     offline_news: bool = False
+    news_snapshot: Path | None = None  # replay de notícias gravadas em execução anterior
     metrics: MetricsBundle | None = None
     charts: dict[str, Path] = field(default_factory=dict)
     news: list[NewsItem] | None = None
@@ -60,7 +61,10 @@ def make_tools(ctx: ToolContext) -> list[BaseTool]:
     def search_road_news(focus: str = "") -> str:
         """Busca notícias recentes sobre acidentes, operações da PRF, feriados prolongados e obras em rodovias
         federais do escopo. `focus` é opcional (ex.: 'feriado', 'BR-101')."""
-        ctx.news = [] if ctx.offline_news else search_news(ctx.uf, ctx.cfg.tavily_api_key, ctx.cfg.max_news)
+        if ctx.news_snapshot:
+            ctx.news = load_news(ctx.news_snapshot)
+        else:
+            ctx.news = [] if ctx.offline_news else search_news(ctx.uf, ctx.cfg.tavily_api_key, ctx.cfg.max_news)
         items = [n.model_dump(include={"id", "title", "source", "published"}) for n in ctx.news]
         return json.dumps({"news": items, "focus_ignored_if_empty": focus}, ensure_ascii=False)
 

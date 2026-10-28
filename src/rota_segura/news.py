@@ -6,11 +6,14 @@ delimitado, nunca como instrução.
 
 from __future__ import annotations
 
+import hashlib
 import html
+import json
 import logging
 import re
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
+from pathlib import Path
 from urllib.parse import quote_plus
 
 import feedparser
@@ -122,6 +125,26 @@ def _from_rss(queries: list[str]) -> list[dict]:
                 }
             )
     return items
+
+
+class NewsSnapshotError(ValueError):
+    pass
+
+
+def save_news(items: list[NewsItem], path: Path) -> str:
+    """Grava o snapshot das notícias usadas na execução (reprodutibilidade) e devolve seu sha256."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps({"items": [n.model_dump() for n in items]}, ensure_ascii=False, indent=2)
+    path.write_text(payload, encoding="utf-8")
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def load_news(path: Path) -> list[NewsItem]:
+    """Lê um snapshot gravado por `save_news` (replay sem rede)."""
+    try:
+        return [NewsItem.model_validate(n) for n in json.loads(path.read_text(encoding="utf-8"))["items"]]
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise NewsSnapshotError(f"Snapshot de notícias inválido ({path}): {exc}") from exc
 
 
 def search_news(uf: str | None, api_key: str | None = None, max_items: int = 8, days: int = 45) -> list[NewsItem]:

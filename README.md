@@ -24,10 +24,11 @@ rota-segura ingest                             # baixa e normaliza a base PRF (2
 rota-segura report                             # relatório Brasil
 rota-segura report --uf SC --focus "feriados e obras na BR-101"
 rota-segura report --uf SC --offline           # sem chave de API: LLM determinístico (mesmo grafo)
+rota-segura report --uf SC --news-from reports/exemplos/SC/noticias.json  # replay das mesmas notícias
 pytest -q && ruff check src tests
 ```
 
-Saídas: `reports/<UF>-<run_id>/relatorio.md` (+ PNGs) e `audit/<run_id>.jsonl` + `audit/<run_id>.manifest.json`.
+Saídas: `reports/<UF>-<run_id>/relatorio.md` (+ PNGs e `noticias.json`, snapshot com hash no manifesto) e `audit/<run_id>.jsonl` + `audit/<run_id>.manifest.json`.
 
 > Os exemplos versionados foram gerados em **modo offline** (sem chave de LLM disponível no ambiente de
 > desenvolvimento). Métricas, gráficos, notícias, guardrails e auditoria são reais; só a redação vem do
