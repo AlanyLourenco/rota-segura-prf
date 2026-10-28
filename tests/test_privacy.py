@@ -61,3 +61,11 @@ def test_groups_are_independent():
             {"estado_fisico": "Lesões Graves", "grupo": "a", "n": 50},
             {"estado_fisico": "Lesões Graves", "grupo": "b", "n": 30}]  # fmt: skip
     assert [r["n"] for r in suppress_small_cells(rows)] == [SECONDARY_MARK, "<5", 50, 30]
+
+
+def test_group_with_only_small_cells_is_dropped():
+    # 3 óbitos, todos homens: com o total público (deaths=3), "Masculino: <5" revelaria o perfil
+    rows = [{"estado_fisico": "Óbito", "grupo": "Masculino", "n": 3},
+            {"estado_fisico": "Lesões Graves", "grupo": "Masculino", "n": 20},
+            {"estado_fisico": "Lesões Graves", "grupo": "Feminino", "n": 9}]  # fmt: skip
+    assert [r["n"] for r in suppress_small_cells(rows)] == [20, 9]

@@ -125,7 +125,7 @@ A base "por pessoa" tem idade, sexo, estado físico e tipo de envolvido. Políti
 | Linhas individuais (por pessoa) | **Nunca** gravadas em `processed/`: agregadas na ingestão (dia × UF × faixa etária × sexo × estado físico × envolvido) |
 | Idade exata | Convertida em faixas (0-17, 18-29, 30-44, 45-59, 60+); idades impossíveis → "Não informado" |
 | Recortes pequenos | Células com n < 5 → `"<5"` (evita reidentificação, ex.: "mulher 60+ morta no km X no dia Y") |
-| Dedução por subtração | Supressão complementar: se um grupo tem uma única célula `"<5"`, a menor visível vira `"suprimido"` (o total de mortes é público) |
+| Dedução por subtração | Supressão complementar: se um grupo tem uma única célula `"<5"`, a menor visível vira `"suprimido"` (o total de mortes é público); grupo só com células `<5` é omitido inteiro |
 | `id`, `pesid`, `id_veiculo`, marca, ano do veículo, lat/long, horário, município | Proibidos no contexto do LLM (`FORBIDDEN_FIELDS`) |
 | Contexto do LLM | `assert_llm_safe`: allowlist de chaves de topo + busca recursiva de campos proibidos |
 | Testemunhas | Excluídas do perfil de vítimas |

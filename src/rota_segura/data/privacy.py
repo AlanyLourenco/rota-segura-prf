@@ -8,6 +8,7 @@ Princípios:
   em recortes pequenos, ex.: "uma mulher de 60+ anos morta na BR-xxx no dia tal").
 - Supressão complementar: se um grupo (ex.: óbitos) tem uma única célula "<5", a menor célula visível
   também é ocultada, pois o total do grupo é público (`deaths`) e a célula seria deduzível por subtração.
+  Grupo só com células pequenas é omitido inteiro (ex.: 3 óbitos, todos homens 60+, numa UF pequena).
 """
 
 from __future__ import annotations
@@ -85,9 +86,12 @@ def suppress_small_cells(
     groups: dict[Any, list[int]] = {}
     for idx, row in enumerate(rows):
         groups.setdefault(row.get(group_key) if group_key else None, []).append(idx)
+    dropped: set[int] = set()
     for idxs in groups.values():
         primary = [i for i in idxs if rows[i]["n"] < min_cell_size]
         visible = [i for i in idxs if rows[i]["n"] >= min_cell_size]
-        if len(primary) == 1 and visible:
+        if primary and not visible:  # só células pequenas: com o total público, o grupo inteiro seria revelado
+            dropped.update(idxs)
+        elif len(primary) == 1:
             out[min(visible, key=lambda i: rows[i]["n"])]["n"] = SECONDARY_MARK
-    return out
+    return [row for idx, row in enumerate(out) if idx not in dropped]
