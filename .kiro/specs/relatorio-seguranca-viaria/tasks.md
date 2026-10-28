@@ -18,5 +18,5 @@
 - [x] 14. Ingestão da base por pessoa (perfil agregado de vítimas) no fluxo padrão (R8.2)
 - [ ] 15. Avaliação: conjunto de casos (golden) p/ guardrails e alucinação (R6)
 - [ ] 16. Rodar com LLM real e versionar exemplo para BR e uma UF (exemplos atuais: modo offline)
-- [ ] 17. Supressão complementar no perfil de vítimas (R8.2)
+- [x] 17. Supressão complementar no perfil de vítimas (R8.2)
 - [ ] 18. Cache de notícias por execução (reprodutibilidade) (R7)

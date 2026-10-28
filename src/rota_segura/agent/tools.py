@@ -67,7 +67,8 @@ def make_tools(ctx: ToolContext) -> list[BaseTool]:
     @tool
     def get_victim_profile() -> str:
         """Perfil agregado e anonimizado (faixa etária, sexo, tipo de envolvido) das vítimas graves e fatais
-        no período atual. Células com menos de 5 pessoas são suprimidas (LGPD)."""
+        no período atual. Células com menos de 5 pessoas viram "<5" e, se for a única do grupo, outra célula vira
+        "suprimido" para impedir dedução por subtração (LGPD)."""
         if ctx.metrics is None:
             return "ERRO: chame get_road_safety_metrics antes."
         ctx.victim_profile = ctx.engine.victim_profile(ctx.uf, ctx.metrics.period)

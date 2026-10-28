@@ -45,5 +45,5 @@
 
 ## R8 — Dados sensíveis (LGPD)
 1. THE SYSTEM SHALL manter allowlist explícita de campos que podem chegar ao LLM.
-2. THE SYSTEM SHALL agregar dados por pessoa (idade, sexo, estado físico) em faixas e suprimir células com n < 5.
+2. THE SYSTEM SHALL agregar dados por pessoa (idade, sexo, estado físico) em faixas e suprimir células com n < 5, aplicando supressão complementar quando um grupo tiver uma única célula suprimida.
 3. THE SYSTEM SHALL NOT enviar ids, coordenadas exatas ou registros individuais ao LLM.

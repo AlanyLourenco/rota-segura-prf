@@ -1,7 +1,13 @@
 import pandas as pd
 import pytest
 
-from rota_segura.data.privacy import PrivacyViolation, assert_llm_safe, bin_people, suppress_small_cells
+from rota_segura.data.privacy import (
+    SECONDARY_MARK,
+    PrivacyViolation,
+    assert_llm_safe,
+    bin_people,
+    suppress_small_cells,
+)
 
 
 def test_allowlist_blocks_unknown_top_level_field():
@@ -33,5 +39,25 @@ def test_bin_people_drops_exact_age_and_witnesses():
 
 
 def test_small_cells_are_suppressed():
-    rows = suppress_small_cells([{"grupo": "a", "n": 4}, {"grupo": "b", "n": 5}], min_cell_size=5)
-    assert rows == [{"grupo": "a", "n": "<5"}, {"grupo": "b", "n": 5}]
+    rows = suppress_small_cells([{"grupo": "a", "n": 4}, {"grupo": "b", "n": 5}, {"grupo": "c", "n": 3}])
+    assert rows == [{"grupo": "a", "n": "<5"}, {"grupo": "b", "n": 5}, {"grupo": "c", "n": "<5"}]
+
+
+def test_single_suppressed_cell_gets_complementary_suppression():
+    rows = [{"estado_fisico": "Óbito", "grupo": "18-29", "n": 40},
+            {"estado_fisico": "Óbito", "grupo": "30-44", "n": 12},
+            {"estado_fisico": "Óbito", "grupo": "60+", "n": 3}]  # fmt: skip
+    out = suppress_small_cells(rows)
+    assert [r["n"] for r in out] == [40, SECONDARY_MARK, "<5"]
+
+
+def test_two_primary_cells_need_no_complement():
+    rows = [{"estado_fisico": "Óbito", "grupo": g, "n": n} for g, n in [("a", 40), ("b", 2), ("c", 4)]]
+    assert [r["n"] for r in suppress_small_cells(rows)] == [40, "<5", "<5"]
+
+
+def test_groups_are_independent():
+    rows = [{"estado_fisico": "Óbito", "grupo": "a", "n": 9}, {"estado_fisico": "Óbito", "grupo": "b", "n": 1},
+            {"estado_fisico": "Lesões Graves", "grupo": "a", "n": 50},
+            {"estado_fisico": "Lesões Graves", "grupo": "b", "n": 30}]  # fmt: skip
+    assert [r["n"] for r in suppress_small_cells(rows)] == [SECONDARY_MARK, "<5", 50, 30]
