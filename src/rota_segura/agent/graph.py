@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Annotated, Any, TypedDict
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
@@ -230,7 +231,7 @@ def build_graph(deps: AgentDeps):
                 attempts=state["attempts"],
                 out_dir=ctx.output_dir,
             )
-            audit.log("artifact", "render", report=str(path))
+            audit.log("artifact", "render", report=Path(path))
         return {"report_path": str(path)}
 
     graph = StateGraph(ReportState)

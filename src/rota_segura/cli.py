@@ -72,7 +72,7 @@ def cmd_report(args: argparse.Namespace) -> int:
         period=ctx.metrics.period.model_dump(), guard_passed=final["guard"].passed,
         writer_attempts=final["attempts"], warnings=final["warnings"],
         news_sources=[{"id": n.id, "url": n.url, "provider": n.provider} for n in ctx.news or []],
-        report=final["report_path"],
+        report=Path(final["report_path"]),
     )  # fmt: skip
     print(f"Relatório: {final['report_path']}\nAuditoria: {audit.path}")
     return 0

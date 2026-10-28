@@ -2,7 +2,7 @@
   "run_id": "20261027-212244-7b0545",
   "started_at": "2026-10-28T00:22:44.109+00:00",
   "status": "ok",
-  "news_snapshot": "D:\\desafio\\rota-segura-prf\\reports\\BR-20261027-212244-7b0545\\noticias.json",
+  "news_snapshot": "reports/BR-20261027-212244-7b0545/noticias.json",
   "news_sha256": "f006540d84147a469519b22a539818c83856d9b9ec10173c73f851ebdbf17b5d",
   "news_replayed": false,
   "scope": "Brasil",
@@ -60,7 +60,7 @@
       "provider": "google_news_rss"
     }
   ],
-  "report": "D:\\desafio\\rota-segura-prf\\reports\\BR-20261027-212244-7b0545\\relatorio.md",
+  "report": "reports/BR-20261027-212244-7b0545/relatorio.md",
   "finished_at": "2026-10-28T00:23:29.626+00:00",
   "events": 35
 }

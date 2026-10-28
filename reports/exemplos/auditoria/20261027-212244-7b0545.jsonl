@@ -31,5 +31,5 @@
 {"run_id": "20261027-212244-7b0545", "seq": 31, "ts": "2026-10-28T00:23:29.511+00:00", "event": "decision", "node": "output_guard", "decision": "aprovado", "reason": "0 problema(s)", "issues": []}
 {"run_id": "20261027-212244-7b0545", "seq": 32, "ts": "2026-10-28T00:23:29.511+00:00", "event": "end", "node": "output_guard", "duration_ms": 7}
 {"run_id": "20261027-212244-7b0545", "seq": 33, "ts": "2026-10-28T00:23:29.513+00:00", "event": "start", "node": "render", "inputs": {}}
-{"run_id": "20261027-212244-7b0545", "seq": 34, "ts": "2026-10-28T00:23:29.603+00:00", "event": "artifact", "node": "render", "report": "D:\\desafio\\rota-segura-prf\\reports\\BR-20261027-212244-7b0545\\relatorio.md"}
+{"run_id": "20261027-212244-7b0545", "seq": 34, "ts": "2026-10-28T00:23:29.603+00:00", "event": "artifact", "node": "render", "report": "reports/BR-20261027-212244-7b0545/relatorio.md"}
 {"run_id": "20261027-212244-7b0545", "seq": 35, "ts": "2026-10-28T00:23:29.604+00:00", "event": "end", "node": "render", "duration_ms": 90}

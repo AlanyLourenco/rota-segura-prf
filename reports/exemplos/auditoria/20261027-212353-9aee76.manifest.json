@@ -2,7 +2,7 @@
   "run_id": "20261027-212353-9aee76",
   "started_at": "2026-10-28T00:23:53.016+00:00",
   "status": "ok",
-  "news_snapshot": "D:\\desafio\\rota-segura-prf\\reports\\SC-20261027-212353-9aee76\\noticias.json",
+  "news_snapshot": "reports/SC-20261027-212353-9aee76/noticias.json",
   "news_sha256": "bcdb7e546d82dae8c2267f38cbe6a9c04d0241d3dfd19eb62bbaa458372c5ad6",
   "news_replayed": true,
   "scope": "SC",
@@ -60,7 +60,7 @@
       "provider": "google_news_rss"
     }
   ],
-  "report": "D:\\desafio\\rota-segura-prf\\reports\\SC-20261027-212353-9aee76\\relatorio.md",
+  "report": "reports/SC-20261027-212353-9aee76/relatorio.md",
   "finished_at": "2026-10-28T00:25:39.743+00:00",
   "events": 35
 }
