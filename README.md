@@ -30,9 +30,10 @@ pytest -q && ruff check src tests
 
 Saídas: `reports/<UF>-<run_id>/relatorio.md` (+ PNGs e `noticias.json`, snapshot com hash no manifesto) e `audit/<run_id>.jsonl` + `audit/<run_id>.manifest.json`.
 
-> Os exemplos versionados foram gerados em **modo offline** (sem chave de LLM disponível no ambiente de
-> desenvolvimento). Métricas, gráficos, notícias, guardrails e auditoria são reais; só a redação vem do
-> redator-template. Com `LLM_MODEL` + chave, o mesmo fluxo usa o LLM real.
+> Os exemplos versionados foram gerados em 27/10/2026 com **LLM real** (`google_genai:gemini-3.6-flash`,
+> plano gratuito): guardrail de saída aprovado na 1ª tentativa nos dois. O SC é um **replay** (`--news-from`)
+> da execução original, com o mesmo `news_sha256` no manifesto. Em `auditoria/` também está uma execução que
+> falhou por cota do provedor (429), registrada no manifesto com `status=error`, sem fallback silencioso.
 
 ---
 
