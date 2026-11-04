@@ -2,12 +2,13 @@
 
 > **Período coberto (base PRF):** 02/08/2026 a 31/08/2026 — últimos 30 dias **disponíveis**.
 > A base da PRF é publicada com atraso de ~1 mês; o dado mais recente disponível é de
-> **31/08/2026** (não é o calendário de hoje, 27/10/2026).
+> **31/08/2026** (não é o calendário de hoje, 04/11/2026).
 > **Comparação:** 03/07/2026 a 01/08/2026 (30 dias imediatamente anteriores).
 > ⚠️ **Dados preliminares:** o ano corrente ainda está sujeito a revisão pela PRF (consolidação em janeiro, revisão em março).
 
 
-**Resumo:** No período preliminar de 02/08/2026 a 31/08/2026, Santa Catarina registrou 673 acidentes nas rodovias federais, com variação de 4,5% em relação ao período anterior, somando 34 mortes e taxa de letalidade de 5,05 mortes por 100 acidentes.
+
+**Resumo:** As rodovias federais de Santa Catarina registraram 673 acidentes entre 02/08/2026 e 31/08/2026, com 34 mortes confirmadas.
 
 
 ## 1. Indicadores principais **[BASE PRF]**
@@ -45,6 +46,10 @@ Trecho = segmento de 1 km (km inteiro). Ordenação: nº de acidentes; desempate
 
 ## 2. Gráficos **[BASE PRF]**
 
+![Principais causas](causas.png)
+
+![Trechos com mais acidentes](trechos.png)
+
 ![Acidentes diários](acidentes_diarios.png)
 
 ![Acidentes mensais](acidentes_mensais.png)
@@ -68,23 +73,25 @@ Cada parágrafo indica sua fonte: **[BASE PRF]** = calculado da base oficial; **
 
 ### Visão geral
 
-**[BASE PRF]** No período preliminar de 02/08/2026 a 31/08/2026, as rodovias federais de Santa Catarina registraram 673 acidentes, o que representa uma variação de 4,5% em comparação ao período anterior, que teve 644 acidentes. No total, foram contabilizadas 34 mortes e 169 vítimas com lesões graves. A taxa de letalidade no estado situou-se em 5,05 mortes por 100 acidentes, e a taxa de gravidade atingiu 22,29%.
+**[BASE PRF]** Houve um aumento de 4,5% no número total de acidentes em comparação ao período anterior. Os dados são preliminares e cobrem os últimos 30 dias.
+
+**[BASE PRF]** A taxa de letalidade foi de 5,05 mortes por 100 acidentes, enquanto a taxa de gravidade, que mede a proporção de acidentes com feridos graves, atingiu 22,29%.
 
 ### Causas e trechos críticos
 
-**[BASE PRF]** A principal causa apontada foi a reação tardia ou ineficiente do condutor, correspondendo a 134 acidentes, 6 mortes e 19,91% do total de ocorrências. A ausência de reação do condutor foi a segunda causa mais frequente, com 104 acidentes, 2 mortes e participação de 15,45%. Outras causas relevantes incluem acessar a via sem observar a presença dos outros veículos (61 acidentes, 3 mortes e 9,06%), ingestão de álcool pelo condutor (50 acidentes, 1 morte e 7,43%) e manobra de mudança de faixa (48 acidentes, 1 morte e 7,13%).
+**[BASE PRF]** A principal causa de acidentes foi a reação tardia ou ineficiente do condutor, responsável por 19,91% das ocorrências. A ausência de reação do condutor aparece em seguida, com 15,45%.
 
-**[BASE PRF]** O trecho mais crítico registrado no período localiza-se na BR-101 no km 207, onde ocorreram 10 acidentes, 1 morte e 3 acidentes graves. Também registraram volume expressivo de ocorrências os trechos do km 214 da BR-101 (7 acidentes e 0 mortes), km 0 da BR-282 (7 acidentes e 0 mortes), km 206 da BR-101 (7 acidentes e 0 mortes) e km 1 da BR-282 (7 acidentes e 0 mortes).
+**[BASE PRF]** Os trechos com maior concentração de acidentes estão na BR-101, especificamente nos quilômetros 207, 214 e 206, além da BR-282 nos quilômetros 0 e 1.
 
 ### Tendência
 
-**[BASE PRF]** A série mensal mostra estabilidade na ocorrência de sinistros nas rodovias catarinenses. No mês de 08/2026 foram computados 697 acidentes e 37 mortes, enquanto em 07/2026 registraram-se 656 acidentes e 39 mortes, e em 06/2026 foram 703 acidentes e 37 mortes. Durante os 30 dias analisados, o volume diário oscilou entre o mínimo de 15 e o máximo de 30 acidentes.
+**[BASE PRF]** O número de acidentes em agosto de 2026 foi de 697, mantendo um patamar similar aos meses anteriores do ano.
 
 ### Contexto das notícias
 
-**[NOTÍCIA 4]** **[NOTÍCIA 6]** No âmbito das ações nas rodovias catarinenses, veículos de imprensa noticiaram a implementação de uma operação especial de segurança para o feriado, acompanhada da restrição do tráfego de caminhões pesados nas rodovias federais do estado no feriado de Nossa Senhora Aparecida em 2026.
+**[NOTÍCIA 4]** **[NOTÍCIA 6]** Notícias recentes mencionam operações especiais de segurança e restrições de tráfego de caminhões pesados em feriados de outubro de 2026.
 
-**[NOTÍCIA 7]** Adicionalmente, foi divulgada a suspensão temporária de obras com impacto no tráfego por parte da concessionária CCR ViaCosteira em virtude do período eleitoral. Essas medidas operacionais e restrições de fluxo podem coincidir com as oscilações na movimentação do tráfego rodoviário do estado.
+**[NOTÍCIA 3]** **[NOTÍCIA 7]** Relatos sobre suspensão de obras em rodovias e investigações envolvendo agentes da PRF também foram publicados no período.
 
 
 ## 5. Notícias consultadas
@@ -100,8 +107,8 @@ Cada parágrafo indica sua fonte: **[BASE PRF]** = calculado da base oficial; **
 
 ## 6. Transparência e governança
 
-- **Execução:** `20261027-212353-9aee76` · trilha de auditoria em `audit/20261027-212353-9aee76.jsonl` e manifesto em `audit/20261027-212353-9aee76.manifest.json`.
-- **Modelo de linguagem:** `gemini-3.6-flash` · versão dos prompts `2026-10-27.1`.
+- **Execução:** `20261104-170700-81211d` · trilha de auditoria em `audit/20261104-170700-81211d.jsonl` e manifesto em `audit/20261104-170700-81211d.manifest.json`.
+- **Modelo de linguagem:** `gemini-3.1-flash-lite` · versão dos prompts `2026-11-01.2`.
 - **Guardrails de saída:** aprovado após 1 tentativa(s).
 - **Origem dos números:** todas as métricas, tabelas e gráficos são calculados por código determinístico (DuckDB) sobre a base aberta da PRF; o LLM apenas redige comentários e é verificado contra esses números.
 - **Notícias:** usadas apenas como contexto. O agente é proibido de atribuir causa a um acidente específico noticiado; causas vêm exclusivamente da base.

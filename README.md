@@ -32,10 +32,12 @@ pytest -q && ruff check src tests
 
 Saídas: `reports/<UF>-<run_id>/relatorio.md` (+ PNGs e `noticias.json`, snapshot com hash no manifesto) e `audit/<run_id>.jsonl` + `audit/<run_id>.manifest.json`.
 
-> Os exemplos versionados foram gerados em 27/10/2026 com **LLM real** (`google_genai:gemini-3.6-flash`,
-> plano gratuito): guardrail de saída aprovado na 1ª tentativa nos dois. O SC é um **replay** (`--news-from`)
-> da execução original, com o mesmo `news_sha256` no manifesto. Em `auditoria/` também está uma execução que
-> falhou por cota do provedor (429), registrada no manifesto com `status=error`, sem fallback silencioso.
+> Os exemplos versionados (Markdown + `relatorio.html` didático) foram gerados em 04/11/2026 com **LLM real**
+> (Gemini, plano gratuito): guardrail de saída aprovado na 1ª tentativa nos dois. Ambos são **replay**
+> (`--news-from`) das notícias da execução original, com o mesmo `news_sha256` no manifesto. No SC, o redator
+> respondeu pelo `gemini-3.1-flash-lite` (cadeia de modelos de `LLM_MODEL`), e a trilha registra o modelo usado em
+> cada chamada. Em `auditoria/` também está uma execução que falhou por cota do provedor (429), registrada no
+> manifesto com `status=error`, sem fallback silencioso.
 
 ---
 
