@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Rota Segura PRF</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <script src="/static/app.js" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=6">
+  <script src="/static/app.js?v=5" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -16,7 +16,10 @@
         <p>Relatórios de segurança nas rodovias federais · base aberta da PRF + agente LLM auditado</p>
       </div>
     </div>
-    <span id="model-badge" class="badge" hidden></span>
+    <div class="top-actions">
+      <span id="model-badge" class="badge" hidden></span>
+      <button id="show-help" type="button" class="ghost">Como usar</button>
+    </div>
   </header>
 
   <main class="layout">
@@ -24,10 +27,25 @@
       <section class="panel">
         <h2>Nova pesquisa</h2>
         <form id="report-form" autocomplete="off">
-          <label for="uf">Abrangência</label>
-          <select id="uf" name="uf">
-            <option value="">Brasil (todas as UFs)</option>
-          </select>
+          <div class="segmented" role="radiogroup" aria-label="Tipo de relatório">
+            <label><input type="radio" name="mode" value="scope" checked> Brasil / UF</label>
+            <label><input type="radio" name="mode" value="route"> Rota</label>
+          </div>
+
+          <div id="scope-fields" class="fields">
+            <label for="uf">Abrangência</label>
+            <select id="uf" name="uf">
+              <option value="">Brasil (todas as UFs)</option>
+            </select>
+          </div>
+
+          <div id="route-fields" class="fields" hidden>
+            <label for="origin">Origem</label>
+            <input id="origin" name="origin" maxlength="80" placeholder="ex.: Goiânia">
+            <label for="destination">Destino</label>
+            <input id="destination" name="destination" maxlength="80" placeholder="ex.: Caldas Novas, GO">
+            <p class="hint">Traçamos a rota de carro e analisamos só os trechos de rodovia federal do caminho. Se o trajeto não usa BR, avisamos e não geramos o relatório.</p>
+          </div>
 
           <label for="focus">Foco <span class="hint">opcional</span></label>
           <input id="focus" name="focus" maxlength="200" placeholder="ex.: feriados e obras na BR-101">
@@ -57,12 +75,52 @@
     </aside>
 
     <section class="main panel" aria-live="polite">
-      <div id="report-empty" class="empty">
-        <h2>Nenhum relatório aberto</h2>
-        <p>Gere uma pesquisa ou abra um relatório anterior.</p>
+      <div id="report-empty" class="intro">
+        <div class="intro-head">
+          <h2>Segurança nas rodovias federais, com números rastreáveis</h2>
+          <p>Gere um relatório para o Brasil, para uma UF ou para a rota de uma viagem. Ou abra um relatório anterior na coluna ao lado.</p>
+        </div>
+        <div class="cards">
+          <article class="card">
+            <h3>Para que serve</h3>
+            <p>Mostra como estão os acidentes nas rodovias federais: variação no período, letalidade, gravidade, as 5 principais causas e os 5 trechos (UF · BR · km) mais críticos, com gráficos diário e mensal e o contexto das notícias recentes.</p>
+          </article>
+          <article class="card">
+            <h3>Para quem</h3>
+            <p><b>Gestores</b> de concessionárias e órgãos de trânsito acompanham o Brasil ou uma UF. <b>Quem vai viajar</b> usa o modo rota para ver os trechos federais do caminho com mais acidentes.</p>
+          </article>
+          <article class="card">
+            <h3>Como usar</h3>
+            <ol>
+              <li>Escolha <b>Brasil / UF</b> ou <b>Rota</b> (origem e destino).</li>
+              <li>Opcional: um foco curto, como “feriados e obras”.</li>
+              <li>Clique em <b>Gerar relatório</b> e acompanhe o agente ao vivo.</li>
+            </ol>
+            <p class="small-note">Modo offline: sem chave nem cota, com texto de modelo pronto (bom para testar).</p>
+          </article>
+          <article class="card">
+            <h3>De onde vêm os números</h3>
+            <p>Da <b>base aberta da PRF</b>, calculados por código (SQL). O modelo de linguagem só escreve os comentários, cada um rotulado <code>[BASE PRF]</code> ou <code>[NOTÍCIA n]</code>, e uma checagem automática recusa número que não esteja na base.</p>
+          </article>
+          <article class="card">
+            <h3>Modo rota</h3>
+            <p>Traçamos o caminho de carro pelo OpenStreetMap, identificamos as BRs e cruzamos com os acidentes da PRF sobre o traçado. Como uma rota tem poucos acidentes por mês, o período é de <b>12 meses</b>. Rodovias estaduais não entram.</p>
+          </article>
+          <article class="card">
+            <h3>Limites e privacidade</h3>
+            <p>A base da PRF sai com ~1 mês de atraso e o ano corrente é preliminar. Nenhum dado de pessoa vai ao modelo, só agregados com supressão de grupos pequenos (LGPD). Tudo fica na trilha de auditoria.</p>
+          </article>
+        </div>
       </div>
       <div id="report-error" class="error" hidden></div>
-      <div id="report-meta" class="report-meta" hidden></div>
+      <div id="report-bar" class="report-bar" hidden>
+        <div id="report-meta" class="report-meta"></div>
+        <div class="report-actions">
+          <a id="report-download" class="action" download="relatorio.html">Baixar relatório</a>
+          <a id="report-open" class="action ghost-action" target="_blank" rel="noopener">Abrir para imprimir / PDF</a>
+        </div>
+      </div>
+      <iframe id="report-frame" class="report-frame" title="Relatório" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" hidden></iframe>
       <article id="report" class="report" hidden></article>
       <details id="manifest" class="manifest" hidden>
         <summary>Manifesto da execução (auditoria)</summary>

@@ -36,9 +36,16 @@ SECURITY_HEADERS = {
     ),
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
+    # Sem isso o navegador guarda app.js/style.css por heurística e mistura versão nova do HTML com JS antigo.
+    "Cache-Control": "no-cache",
 }
+# relatorio.html: sem script nenhum; só CSS inline e imagens embutidas; pode ser exibido em iframe da própria app.
+REPORT_CSP = (
+    "default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'; "
+    "frame-ancestors 'self'"
+)
 LLM_KEY_VARS = ("GOOGLE_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GROQ_API_KEY")
-_FILE_TYPES = {".png", ".json", ".md"}
+_FILE_TYPES = {".png", ".json", ".md", ".html"}
 _RUN_ID = re.compile(r"Execução:\*\* `([\w-]+)`")
 _BARE_FILE = re.compile(r"^[\w.-]+$")
 _HTTP_URL = re.compile(r"^https?://", re.I)
@@ -148,6 +155,8 @@ def create_app(cfg: Settings = default_settings, engine_factory: Callable[[], An
     async def security_headers(request: Request, call_next):
         response = await call_next(request)
         response.headers.update(SECURITY_HEADERS)
+        if request.url.path.startswith("/files/") and request.url.path.endswith(".html"):
+            response.headers["Content-Security-Policy"] = REPORT_CSP
         return response
 
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
@@ -178,6 +187,8 @@ def create_app(cfg: Settings = default_settings, engine_factory: Callable[[], An
         return {
             **info,
             "html": render_markdown((folder / "relatorio.md").read_text(encoding="utf-8"), info["key"]),
+            # relatório didático (R9/R10); exemplos antigos só têm o Markdown
+            "report_url": f"/files/{info['key']}/relatorio.html" if (folder / "relatorio.html").is_file() else None,
             "events": _events(_audit_file(cfg, info["run_id"], ".jsonl") if info["run_id"] else None),
             "manifest": json.loads(manifest.read_text(encoding="utf-8")) if manifest else None,
         }
@@ -190,7 +201,14 @@ def create_app(cfg: Settings = default_settings, engine_factory: Callable[[], An
         return FileResponse(target)
 
     @app.get("/api/stream")
-    def stream(uf: str = "", focus: str = "", offline: bool = False, no_news: bool = False) -> StreamingResponse:
+    def stream(
+        uf: str = "",
+        focus: str = "",
+        origin: str = "",
+        destination: str = "",
+        offline: bool = False,
+        no_news: bool = False,
+    ) -> StreamingResponse:
         def events() -> Iterator[str]:
             if not busy.acquire(blocking=False):
                 yield _sse("failed", {"status": "busy", "reason": "Já existe um relatório em geração. Aguarde."})
@@ -202,7 +220,8 @@ def create_app(cfg: Settings = default_settings, engine_factory: Callable[[], An
                 def work() -> None:
                     try:
                         outcome["result"] = run_report(
-                            cfg, uf=uf or None, focus=focus or None, offline=offline, no_news=no_news,
+                            cfg, uf=uf or None, focus=focus or None, origin=origin or None,
+                            destination=destination or None, offline=offline, no_news=no_news,
                             engine=engine_factory() if engine_factory else None, listener=feed.put,
                         )  # fmt: skip
                     except Exception as exc:  # ex.: base não ingerida

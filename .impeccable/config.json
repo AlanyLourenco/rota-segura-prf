@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/rota_segura/web/static/index.html"
+        ],
+        "createdAt": "2026-11-04T19:28:18.334Z",
+        "reason": "Claude triage: only match is the full-width topbar road-sign stripe (border-bottom 4px), not a side accent on a card; incumbent identity"
+      }
+    ]
+  }
+}

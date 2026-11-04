@@ -49,6 +49,7 @@ select = ["E", "F", "I", "B", "UP", "SIM"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/rota_segura/report.py" = ["E501"]  # template Markdown
+"src/rota_segura/report_html.py" = ["E501"]  # template HTML (CSS/markup inline)
 
 [tool.setuptools.package-data]
 rota_segura = ["web/static/*"]

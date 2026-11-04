@@ -68,7 +68,9 @@ def _parse_date(value: str | None) -> datetime | None:
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
 
 
-def _queries(uf: str | None) -> list[str]:
+def _queries(uf: str | None, roads: list[str] | None = None) -> list[str]:
+    if roads:  # rota (R10): notícias das BRs do trajeto
+        return [f"{topic} {road}" for road in roads[:3] for topic in ("acidente", "obras", "PRF")]
     place = _UF_NAMES.get(uf, "") if uf else ""
     return [f"{topic} {place}".strip() for topic in TOPICS]
 
@@ -147,9 +149,11 @@ def load_news(path: Path) -> list[NewsItem]:
         raise NewsSnapshotError(f"Snapshot de notícias inválido ({path}): {exc}") from exc
 
 
-def search_news(uf: str | None, api_key: str | None = None, max_items: int = 8, days: int = 45) -> list[NewsItem]:
+def search_news(
+    uf: str | None, api_key: str | None = None, max_items: int = 8, days: int = 45, roads: list[str] | None = None
+) -> list[NewsItem]:
     """Busca notícias recentes, deduplica, filtra por data e devolve no máximo `max_items`."""
-    queries = _queries(uf)
+    queries = _queries(uf, roads)
     try:
         raw = _from_tavily(queries, api_key, days) if api_key else _from_rss(queries)
     except httpx.HTTPError as exc:

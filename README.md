@@ -25,6 +25,7 @@ rota-segura web                                # interface local em http://127.0
 rota-segura report                             # relatório Brasil
 rota-segura report --uf SC --focus "feriados e obras na BR-101"
 rota-segura report --uf SC --offline           # sem chave de API: LLM determinístico (mesmo grafo)
+rota-segura report --origem "Goiânia" --destino "Caldas Novas"   # modo rota (extra): só as BRs do trajeto
 rota-segura report --uf SC --news-from reports/exemplos/SC/noticias.json  # replay das mesmas notícias
 pytest -q && ruff check src tests
 ```
@@ -38,12 +39,24 @@ Saídas: `reports/<UF>-<run_id>/relatorio.md` (+ PNGs e `noticias.json`, snapsho
 
 ---
 
+### Modo rota (extra ao escopo Brasil/UF)
+
+Além do relatório para o Brasil ou uma UF, que é o que o desafio pede, o usuário pode informar **origem e destino**. O nó determinístico `route` do grafo:
+
+1. traça a rota de carro com **OpenStreetMap**: Nominatim para achar as cidades e OSRM para o traçado. É gratuito e não precisa de chave; só os nomes das cidades saem da máquina;
+2. lê as **BRs** dos passos do trajeto (ex.: BR-153, BR-352) e, para cada uma, só o pedaço do traçado percorrido nela;
+3. cruza esse pedaço com os acidentes georreferenciados da mesma BR na base da PRF, usando uma grade de ~1,1 km. Os kms encontrados viram **trechos UF · BR · km**. Trecho ancorado por menos de 3 acidentes é descartado, porque coordenada errada não pode virar rota. Trecho muito maior que a distância percorrida na BR é recortado em torno da mediana, porque a coordenada urbana é imprecisa;
+4. se o trajeto **não usa BR**, ou se nenhuma BR tem dados, **não gera relatório**: a decisão vai para a auditoria e o manifesto fica com `status=not_covered`.
+
+As métricas são as mesmas, só que filtradas pelos trechos. O período é de **365 dias**, porque em 30 dias uma rota tem poucos acidentes. O gráfico diário continua nos últimos 30 dias. O relatório lista os trechos usados e as BRs sem registro da PRF (em geral, trechos sob gestão estadual), e a rota resolvida fica em `rota.json`.
+
 ### Interface web local
 
 `rota-segura web` abre no navegador uma página com o **layout lado a lado**:
 
-- **À esquerda:** o formulário (UF, foco, modo offline, sem notícias) e o **agente ao vivo**. Cada evento da trilha de auditoria (nós, tools com duração, decisões dos guardrails com os problemas encontrados, fallback, sanitização) chega por SSE no momento em que é gravado.
-- **À direita:** o relatório completo e o manifesto da execução.
+- **Antes do primeiro relatório:** cards explicando para que serve, para quem, como usar, de onde vêm os números, o modo rota e os limites. O botão **Como usar** no topo volta para eles.
+- **À esquerda:** o formulário (**Brasil / UF** ou **Rota** com origem e destino, foco, modo offline, sem notícias) e o **agente ao vivo**. Cada evento da trilha de auditoria (nós, tools com duração, decisões dos guardrails com os problemas encontrados, fallback, sanitização) chega por SSE no momento em que é gravado.
+- **À direita:** o relatório didático (`relatorio.html`) e o manifesto da execução. O HTML é o **mesmo arquivo** que o botão **Baixar relatório** entrega: um arquivo só, com gráficos embutidos, sem JavaScript, que abre offline e pode ser impresso ou salvo em PDF. Ele tem cards (acidentes com seta de variação, mortos, letalidade e gravidade, cada um com uma frase de leitura), gráficos de causas e de trechos, caixas "Como ler", comentários da IA em tópicos curtos e definições/transparência numa seção recolhível. Na interface ele roda num iframe `sandbox` com CSP própria (`default-src 'none'`). O `relatorio.md` continua sendo gerado como artefato textual da auditoria.
 - **Relatórios anteriores:** abrem sem chamar o LLM, com a linha do tempo reconstruída a partir do JSONL. Isso inclui os exemplos versionados.
 
 A interface usa o mesmo fluxo da CLI (`service.run_report`). O servidor escuta só em `127.0.0.1` e gera um relatório por vez, para não gastar cota em paralelo. O HTML do relatório é saneado (sem HTML bruto, só links http/https), já que ele contém títulos de notícias da internet, e a página roda sob CSP restrita. Sem chave de LLM no `.env`, o modo offline vem marcado.
@@ -59,7 +72,7 @@ A interface usa o mesmo fluxo da CLI (`service.run_report`). O servidor escuta s
 | **Nó `collect` com fallback** | Se o LLM pular uma tool obrigatória, o sistema executa e **registra a decisão** — o relatório nunca sai sem métricas. |
 | **Writer com saída estruturada** (`Draft` pydantic) | Cada parágrafo traz `sources` (`BASE` / `NEWS:n`), o que torna a validação automática possível. |
 | **DuckDB sobre Parquet** | SQL rápido, sem servidor, consultas legíveis e reproduzíveis (hash da base no manifesto). |
-| **Provedor de LLM plugável** (`init_chat_model`) | Padrão: **Gemini Flash** (plano gratuito do Google AI Studio). Troca de modelo por variável de ambiente; modo offline para testes/CI. |
+| **Provedor de LLM plugável** (`init_chat_model`) | Padrão: **Gemini Flash** (plano gratuito do Google AI Studio). Troca de modelo por variável de ambiente; `LLM_MODEL` aceita **lista com fallback** (a cota grátis é ~20 requisições/dia *por modelo*, então encadear modelos multiplica os relatórios/dia) e `ORCHESTRATOR_MODEL=offline` reduz cada relatório a 1–3 requisições. O modelo que de fato respondeu vai para a auditoria e para a seção Transparência. Modo offline para testes/CI. |
 
 Por que **não** RAG/banco vetorial: as métricas são agregações exatas sobre dados tabulares — recuperação
 semântica traria imprecisão onde precisamos de exatidão. Notícias são poucas e recentes; busca direta basta.
@@ -147,7 +160,7 @@ A base "por pessoa" tem idade, sexo, estado físico e tipo de envolvido. Políti
 - Camadas separadas: dados (`data/`), métricas puras (`metrics.py`), agente (`agent/`), políticas
   (`guardrails.py`, `data/privacy.py`), auditoria (`audit.py`), apresentação (`report.py`, `charts.py`).
 - Tipos com pydantic; nada de dicionário solto atravessando camadas.
-- **55 testes** (`pytest`, incluindo o conjunto golden): parsing real do formato PRF, métricas sobre base sintética com resultado
+- **89 testes** (`pytest`, incluindo o conjunto golden): parsing real do formato PRF, métricas sobre base sintética com resultado
   conhecido, privacidade, guardrails (injeção, alucinação numérica, causa de notícia, PII) e o grafo ponta a
   ponta — inclusive um LLM "preguiçoso" (não chama tools) e um "alucinador" (fallback e sanitização auditados).
 - `ruff check` + `ruff format` limpos.
@@ -166,7 +179,7 @@ precisa. Fluxo: requisito → design → tarefa → código → teste → marcar
 ## Estrutura
 
 ```
-src/rota_segura/  config · data/{ingest,causes,privacy} · metrics · charts · news
+src/rota_segura/  config · data/{ingest,causes,privacy} · metrics · charts · news · route · llm
                   guardrails · audit · report · cli · agent/{graph,tools,prompts,offline}
 tests/            ingest · metrics · privacy · guardrails · graph
 docs/             arquitetura.pdf/.png + script gerador
@@ -176,4 +189,4 @@ reports/exemplos/ relatórios BR e SC + trilhas de auditoria
 
 ## Próximos passos
 
-Interface web; ampliar o conjunto golden com saídas reais do LLM reprovadas pelos guardrails.
+Mapa do traçado no relatório de rota; ampliar o conjunto golden com saídas reais do LLM reprovadas pelos guardrails.

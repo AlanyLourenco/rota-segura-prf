@@ -1,4 +1,4 @@
-"""Renderização do relatório final em Markdown (Jinja2)."""
+"""Renderização do relatório final: Markdown (artefato textual/auditável) + HTML didático (`report_html`)."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from jinja2 import Environment, StrictUndefined
 from rota_segura.guardrails import BASE_SOURCE, Draft, GuardReport
 from rota_segura.metrics import MetricsBundle
 from rota_segura.news import NewsItem
+from rota_segura.report_html import render_html
 
 
 def _br(value: float | None, digits: int = 2) -> str:
@@ -27,14 +28,28 @@ def _labels(sources: list[str]) -> str:
 TEMPLATE = """\
 # Relatório de Segurança nas Rodovias Federais — {{ m.scope }}
 
-> **Período coberto (base PRF):** {{ m.period.label }} — últimos {{ m.daily|length }} dias **disponíveis**.
+> **Período coberto (base PRF):** {{ m.period.label }} — últimos {{ m.period_days }} dias **disponíveis**.
 > A base da PRF é publicada com atraso de ~1 mês; o dado mais recente disponível é de
 > **{{ m.data_max_date.strftime('%d/%m/%Y') }}** (não é o calendário de hoje, {{ generated_at }}).
-> **Comparação:** {{ m.previous_period.label }} (30 dias imediatamente anteriores).
+> **Comparação:** {{ m.previous_period.label }} ({{ m.period_days }} dias imediatamente anteriores).
 {% if m.preliminary %}> ⚠️ **Dados preliminares:** o ano corrente ainda está sujeito a revisão pela PRF \
 (consolidação em janeiro, revisão em março).
 {% endif %}
 
+{% if m.route %}
+## Rota analisada **[BASE PRF]**
+
+**{{ m.route.label }}** · {{ br(m.route.distance_km, 1) }} km de carro (traçado: OpenStreetMap/OSRM) · rodovias federais no trajeto: {% for b in m.route.brs %}BR-{{ '%03d' % b }}{{ ", " if not loop.last }}{% endfor %}.
+Os números deste relatório consideram só os trechos da base PRF sobre o traçado:
+
+| Trecho (UF · BR · km) | Acidentes que ancoraram o trecho (todo o histórico) |
+|---|---:|
+{% for s in m.route.segments %}| {{ s.label }} | {{ s.accidents_matched }} |
+{% endfor %}
+{% if m.route.brs_without_data %}> ℹ️ Sem registros da PRF neste traçado: {% for b in m.route.brs_without_data %}BR-{{ '%03d' % b }}{{ ", " if not loop.last }}{% endfor %} (trecho possivelmente sob gestão estadual ou sem ocorrências registradas). Rodovias estaduais e municipais do trajeto não entram na base da PRF.
+{% endif %}
+> Período de {{ m.period_days }} dias para a rota: em 30 dias um trajeto tem poucos acidentes e as taxas ficariam instáveis. O gráfico diário continua mostrando os últimos 30 dias disponíveis.
+{% endif %}
 **Resumo:** {{ draft.headline }}
 
 {% for w in warnings %}> ⚠️ {{ w }}
@@ -44,7 +59,7 @@ TEMPLATE = """\
 | Indicador | Valor | Definição |
 |---|---:|---|
 | Acidentes no período | {{ br(m.total_accidents, 0) }} | ocorrências registradas pela PRF |
-| Acidentes no período anterior | {{ br(m.previous_total, 0) }} | 30 dias imediatamente anteriores |
+| Acidentes no período anterior | {{ br(m.previous_total, 0) }} | {{ m.period_days }} dias imediatamente anteriores |
 | Variação | {{ br(m.variation_pct) }}% | (atual − anterior) / anterior |
 | Mortos | {{ br(m.deaths, 0) }} | soma de óbitos nas ocorrências |
 | Taxa de letalidade | {{ br(m.lethality_rate) }} | mortos por 100 acidentes |
@@ -66,7 +81,11 @@ Trecho = segmento de 1 km (km inteiro). Ordenação: nº de acidentes; desempate
 {% endfor %}
 ## 2. Gráficos **[BASE PRF]**
 
-![Acidentes diários]({{ charts.daily }})
+{% if charts.get("causes") %}![Principais causas]({{ charts.causes }})
+
+{% endif %}{% if charts.get("segments") %}![Trechos com mais acidentes]({{ charts.segments }})
+
+{% endif %}![Acidentes diários]({{ charts.daily }})
 
 ![Acidentes mensais]({{ charts.monthly }})
 
@@ -131,13 +150,17 @@ def render_report(
 ) -> Path:
     env = Environment(undefined=StrictUndefined, trim_blocks=False, autoescape=False)
     env.globals.update(br=_br, labels=_labels)
+    generated_at = datetime.now().strftime("%d/%m/%Y")
+    common = dict(
+        metrics=metrics, draft=draft, news=news, victim_profile=victim_profile, warnings=warnings, run_id=run_id,
+        model=model, prompt_version=prompt_version, guard=guard, attempts=attempts, generated_at=generated_at,
+    )  # fmt: skip
     text = env.from_string(TEMPLATE).render(
-        m=metrics, draft=draft, news=news, charts={k: p.name for k, p in charts.items()},
-        victim_profile=victim_profile, warnings=warnings, run_id=run_id, model=model,
-        prompt_version=prompt_version, guard=guard, attempts=attempts,
-        generated_at=datetime.now().strftime("%d/%m/%Y"),
+        m=metrics, charts={k: p.name for k, p in charts.items()},
+        **{k: v for k, v in common.items() if k != "metrics"},
     )  # fmt: skip
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / "relatorio.md"
     path.write_text(text, encoding="utf-8")
+    render_html(**common, charts=charts, out_dir=out_dir)
     return path

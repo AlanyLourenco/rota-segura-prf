@@ -39,12 +39,16 @@ class Settings:
     reports_dir: Path = ROOT / "reports"
     audit_dir: Path = ROOT / "audit"
     period_days: int = 30
+    route_period_days: int = 365  # rota tem poucos acidentes em 30 dias (R10.4)
     monthly_window: int = 12
     top_n: int = 5
     min_cell_size: int = 5  # supressão LGPD para agregados por pessoa
     max_writer_attempts: int = 3
     max_news: int = 8
+    # Lista separada por vírgula: o 1º é o principal, os demais são fallback (ex.: em 429). Ver rota_segura/llm.py.
     llm_model: str = field(default_factory=lambda: os.getenv("LLM_MODEL", "google_genai:gemini-3.6-flash"))
+    # "" = mesma cadeia de LLM_MODEL; "offline" = plano fixo de tools (economiza 3 requisições por relatório).
+    orchestrator_model: str = field(default_factory=lambda: os.getenv("ORCHESTRATOR_MODEL", ""))
     tavily_api_key: str | None = field(default_factory=lambda: os.getenv("TAVILY_API_KEY"))
 
     @property

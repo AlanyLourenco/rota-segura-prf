@@ -50,8 +50,17 @@
 3. THE SYSTEM SHALL NOT enviar ids, coordenadas exatas ou registros individuais ao LLM.
 
 ## R9 — Interface web local
-1. THE SYSTEM SHALL oferecer uma interface web local (`rota-segura web`, só em 127.0.0.1) com formulário de UF, foco opcional e modo offline.
+1. THE SYSTEM SHALL oferecer uma interface web local (`rota-segura web`, só em 127.0.0.1) com formulário de UF (ou rota origem → destino, R10), foco opcional e modo offline.
 2. WHILE um relatório é gerado, THE SYSTEM SHALL exibir ao vivo os eventos da trilha de auditoria (nós, tools, decisões de guardrail) ao lado do relatório.
 3. THE SYSTEM SHALL usar o mesmo fluxo da CLI (guardrails, auditoria, manifesto e snapshot de notícias), sem lógica de negócio própria.
 4. WHEN a entrada é recusada ou o provedor de LLM falha, THE SYSTEM SHALL mostrar o motivo na tela (e no manifesto).
 5. THE SYSTEM SHALL listar os relatórios já gerados (incluindo os exemplos versionados) com sua linha do tempo de auditoria, sem chamar o LLM.
+
+## R10 — Relatório de rota (origem → destino), extra ao escopo Brasil/UF
+1. WHERE o usuário informa origem e destino (cidades), THE SYSTEM SHALL traçar a rota de carro (OpenStreetMap: Nominatim + OSRM, sem chave) e identificar as rodovias federais (BR) do trajeto.
+2. THE SYSTEM SHALL associar à rota os trechos da base PRF (UF + BR + intervalo de km) cujos acidentes georreferenciados ficam a ~1–2 km do traçado, e calcular as mesmas métricas só sobre esses trechos (código determinístico).
+3. IF a rota não usa rodovia federal (ou nenhum trecho da base é associado), THEN THE SYSTEM SHALL NOT gerar o relatório e SHALL informar o motivo ao usuário, registrando a decisão na auditoria.
+4. THE SYSTEM SHALL usar 365 dias como período principal da rota (amostra pequena em 30 dias), mantendo o gráfico diário dos últimos 30 dias e o mensal de 12 meses; o período fica explícito no relatório.
+5. THE SYSTEM SHALL validar origem/destino no guardrail de entrada (ambos ou nenhum, tamanho, só texto de lugar, sem injeção/PII) e não aceitar UF e rota ao mesmo tempo.
+6. THE SYSTEM SHALL gravar a rota resolvida (cidades, BRs, trechos) no manifesto e em `rota.json`; só nomes de cidades saem para o serviço de mapas.
+7. THE SYSTEM SHALL exibir na interface cards explicativos (para que serve, para quem, como usar, de onde vêm os números).

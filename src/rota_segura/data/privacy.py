@@ -21,6 +21,7 @@ LLM_ALLOWED_FIELDS = frozenset({
     "uf", "scope", "period", "previous_period", "total_accidents", "previous_total", "variation_pct",
     "lethality_rate", "severity_rate", "deaths", "severe_injuries", "top_causes", "top_segments",
     "daily", "monthly", "preliminary", "data_max_date", "victim_profile", "news",
+    "period_days", "route",  # rota (R10): cidades informadas pelo usuário, BRs e trechos — sem coordenadas
 })  # fmt: skip
 
 FORBIDDEN_FIELDS = frozenset({

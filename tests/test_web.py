@@ -47,3 +47,13 @@ def test_render_markdown_drops_raw_html_and_unsafe_links():
     html = render_markdown("<script>alert(1)</script> [x](javascript:alert(1)) [ok](https://gov.br) <5", "k")
     assert "<script" not in html and "javascript:" not in html
     assert 'href="https://gov.br"' in html and "&lt;5" in html
+
+
+def test_html_report_is_served_without_scripts_and_frameable_only_by_app(client):
+    client.get("/api/stream", params={"uf": "SC", "offline": "1", "no_news": "1"})
+    run = client.get(f"/api/runs/{client.get('/api/runs').json()[0]['key']}").json()
+    resp = client.get(run["report_url"])
+    csp = resp.headers["content-security-policy"]
+    assert resp.status_code == 200 and "Gravidade" in resp.text
+    assert "script-src" not in csp and "default-src 'none'" in csp and "frame-ancestors 'self'" in csp
+    assert resp.headers["cache-control"] == "no-cache"

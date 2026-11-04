@@ -75,7 +75,9 @@ _INJECTION = re.compile(
     re.I,
 )
 _IN_SCOPE = re.compile(
-    r"acident|rodovi|tr[aâ]nsito|seguran|PRF|BR-?\d|feriado|obra|causa|trecho|letalidade|gravidade|v[ií]tima",
+    r"acident|rodovi|tr[aâ]nsito|seguran|PRF|BR-?\d|feriado|obra|causa|trecho|letalidade|gravidade|v[ií]tima|"
+    r"natal|r[eé]veillon|ano novo|carnaval|p[aá]scoa|f[eé]rias|corpus christi|tiradentes|chuva|noite|"
+    r"motociclet|moto|caminh[aã]o|pedestre|ciclista|[aá]lcool|velocidade|ultrapassagem|viagem|estrada",
     re.I,
 )
 MAX_FOCUS_CHARS = 200
@@ -100,10 +102,40 @@ def validate_request(uf: str | None, focus: str | None) -> tuple[str | None, str
         if _INJECTION.search(focus):
             raise InputRejected("Foco contém instruções que tentam alterar o comportamento do agente.")
         if not _IN_SCOPE.search(focus):
-            raise InputRejected("Foco fora do escopo (segurança nas rodovias federais).")
+            raise InputRejected(
+                "Foco fora do escopo (segurança nas rodovias federais). Exemplos: 'feriado de Natal', "
+                "'obras na BR-101', 'motociclistas', 'chuva'."
+            )
         if find_pii(focus):
             raise InputRejected("Foco contém dado pessoal; remova antes de enviar.")
     return uf, focus or None
+
+
+MAX_PLACE_CHARS = 80
+_PLACE = re.compile(r"^[^\W\d_][\w\s'.,()/-]*$")  # nome de cidade (com ", UF" opcional); sem dígitos no início
+
+
+def validate_route(uf: str | None, origin: str | None, destination: str | None) -> tuple[str, str] | None:
+    """Origem/destino (R10.5): ambos ou nenhum, só nome de lugar, sem injeção/PII, e não junto com UF."""
+    origin, destination = (origin or "").strip(), (destination or "").strip()
+    if not origin and not destination:
+        return None
+    if not origin or not destination:
+        raise InputRejected("Informe origem e destino (ou nenhum dos dois para o relatório por UF/Brasil).")
+    if uf and uf.strip().upper() not in {"", "BR", "BRASIL"}:
+        raise InputRejected("Escolha UF ou rota, não os dois: a rota já define as UFs do trajeto.")
+    for label, place in (("Origem", origin), ("Destino", destination)):
+        if len(place) > MAX_PLACE_CHARS:
+            raise InputRejected(f"{label} excede {MAX_PLACE_CHARS} caracteres.")
+        if _INJECTION.search(place) or find_pii(place) or not _PLACE.match(place) or any(c.isdigit() for c in place):
+            raise InputRejected(f"{label} deve ser só o nome de uma cidade (ex.: Goiânia ou Caldas Novas, GO).")
+    if _strip_accents(origin).lower() == _strip_accents(destination).lower():
+        raise InputRejected("Origem e destino são a mesma cidade.")
+    return origin, destination
+
+
+class RouteNotCovered(InputRejected):
+    """A rota não passa por rodovia federal com dados na base da PRF (R10.3): não há relatório a gerar."""
 
 
 # --------------------------------------------------------------------------- saída

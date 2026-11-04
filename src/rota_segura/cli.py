@@ -22,9 +22,13 @@ def cmd_report(args: argparse.Namespace) -> int:
     from rota_segura.service import run_report
 
     result = run_report(
-        settings, uf=args.uf, focus=args.focus, offline=args.offline, no_news=args.no_news,
+        settings, uf=args.uf, focus=args.focus, origin=args.origem, destination=args.destino,
+        offline=args.offline, no_news=args.no_news,
         news_from=Path(args.news_from) if args.news_from else None, out_dir=Path(args.out) if args.out else None,
     )  # fmt: skip
+    if result.status == "not_covered":
+        print(f"Rota sem cobertura da base PRF: {result.reason}", file=sys.stderr)
+        return 3
     if result.status == "rejected":
         print(f"Requisição rejeitada: {result.reason}", file=sys.stderr)
         return 2
@@ -76,6 +80,8 @@ def main(argv: list[str] | None = None) -> int:
     p_report = sub.add_parser("report", help="Gera o relatório")
     p_report.add_argument("--uf", help="Sigla da UF (omita para Brasil)")
     p_report.add_argument("--focus", help="Foco opcional (ex.: 'feriados e obras')")
+    p_report.add_argument("--origem", help="Cidade de origem da rota (com --destino; não use com --uf)")
+    p_report.add_argument("--destino", help="Cidade de destino da rota")
     p_report.add_argument("--offline", action="store_true", help="Usa LLM determinístico (sem API)")
     p_report.add_argument("--no-news", action="store_true", help="Não busca notícias (sem rede)")
     p_report.add_argument("--news-from", help="Reusa o snapshot noticias.json de uma execução anterior")

@@ -6,6 +6,7 @@ const $ = (id) => document.getElementById(id);
 
 const NODE_LABELS = {
   input_guard: "Guardrail de entrada",
+  route: "Rota (OpenStreetMap)",
   orchestrator: "Orquestrador (LLM)",
   tools: "Execução de tools",
   "tool:get_road_safety_metrics": "Tool · métricas (DuckDB)",
@@ -18,7 +19,7 @@ const NODE_LABELS = {
   sanitize: "Sanitização",
   render: "Montagem do relatório",
 };
-const GOOD = new Set(["aprovado"]);
+const GOOD = new Set(["aprovado", "coberta"]);
 const BAD = new Set(["reprovado", "rejeitado", "bloqueado"]);
 
 let source = null;
@@ -60,9 +61,11 @@ function lastOpenStep(node) {
 function addStep(record, state) {
   const title = el("div", { class: "step-title" }, el("span", {}, stepTitle(record)), el("span", { class: "step-time" }));
   const item = el("li", { class: `step ${state}`, "data-node": record.node }, title);
-  $("timeline").append(item);
+  const list = $("timeline");
+  const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 40;
+  list.append(item);
   $("timeline-empty").hidden = true;
-  item.scrollIntoView({ block: "nearest" });
+  if (atBottom) list.scrollTop = list.scrollHeight; // segue o agente, a menos que você tenha rolado para cima
   return item;
 }
 
@@ -119,16 +122,22 @@ function setStatus(text, kind) {
 // ------------------------------------------------------------------ relatório
 
 function clearReport() {
+  $("report-meta").replaceChildren();
+  $("report").replaceChildren();
+  $("report-frame").removeAttribute("src");
+  $("manifest-json").textContent = "";
   $("report-empty").hidden = false;
   $("report-error").hidden = true;
-  $("report-meta").hidden = true;
+  $("report-bar").hidden = true;
+  $("report-frame").hidden = true;
   $("report").hidden = true;
   $("manifest").hidden = true;
 }
 
-function showError(title, reason) {
+function showError(title, reason, kind = "") {
   $("report-empty").hidden = true;
   const box = $("report-error");
+  box.className = `error ${kind}`;
   box.replaceChildren(el("strong", {}, title), reason || "");
   box.hidden = false;
 }
@@ -144,16 +153,32 @@ async function openRun(key, { replayTimeline }) {
   $("report-error").hidden = true;
 
   const meta = $("report-meta");
+  const model = (run.model || "modelo n/d").split(",")[0].split(":").at(-1);
   meta.replaceChildren(
     el("span", { class: "tag" }, run.scope),
-    el("span", { class: "tag" }, run.model || "modelo n/d"),
+    el("span", { class: "tag" }, model),
     el("span", { class: "tag" }, `execução ${run.run_id || "n/d"}`),
   );
-  meta.hidden = false;
+  $("report-bar").hidden = false;
 
+  const frame = $("report-frame");
   const article = $("report");
-  article.innerHTML = run.html; // saneado no servidor (sem HTML bruto, só links http/https)
-  article.hidden = false;
+  const fileUrl = run.report_url || `/files/${run.key}/relatorio.md`;
+  $("report-download").href = fileUrl;
+  $("report-download").setAttribute("download", run.report_url ? "relatorio.html" : "relatorio.md");
+  $("report-open").href = fileUrl;
+  $("report-open").hidden = !run.report_url;
+  if (run.report_url) {
+    // Relatório didático: o mesmo arquivo que é baixado, isolado num iframe sem permissão de script.
+    article.hidden = true;
+    frame.hidden = false;
+    frame.onload = () => fitFrame(frame);
+    frame.src = run.report_url;
+  } else {
+    frame.hidden = true;
+    article.innerHTML = run.html; // exemplos antigos: Markdown saneado no servidor
+    article.hidden = false;
+  }
 
   $("manifest-json").textContent = run.manifest ? JSON.stringify(run.manifest, null, 2) : "Manifesto não encontrado.";
   $("manifest").hidden = false;
@@ -165,6 +190,17 @@ async function openRun(key, { replayTimeline }) {
   }
   markCurrent(key);
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function fitFrame(frame) {
+  try {
+    const doc = frame.contentDocument;
+    frame.style.height = `${doc.documentElement.scrollHeight + 8}px`;
+    // <details> muda a altura ao abrir/fechar
+    doc.querySelectorAll("details").forEach((d) => d.addEventListener("toggle", () => fitFrame(frame)));
+  } catch {
+    frame.style.height = "80vh";
+  }
 }
 
 // ------------------------------------------------------------------ relatórios anteriores
@@ -201,7 +237,13 @@ async function loadRuns() {
 function startRun(event) {
   event.preventDefault();
   if (source) source.close();
-  const params = new URLSearchParams({ uf: $("uf").value, focus: $("focus").value.trim() });
+  const params = new URLSearchParams({ focus: $("focus").value.trim() });
+  if (routeMode()) {
+    params.set("origin", $("origin").value.trim());
+    params.set("destination", $("destination").value.trim());
+  } else {
+    params.set("uf", $("uf").value);
+  }
   if ($("offline").checked) params.set("offline", "1");
   if ($("no_news").checked) params.set("no_news", "1");
 
@@ -224,11 +266,13 @@ function startRun(event) {
     const { status, reason } = JSON.parse(e.data);
     const titles = {
       rejected: "Pesquisa recusada pelo guardrail de entrada",
+      not_covered: "Essa rota não passa por rodovias federais com dados da PRF",
       busy: "Outro relatório está em geração",
       error: "Falha na geração (registrada no manifesto)",
     };
-    setStatus(status === "rejected" ? "recusado" : "falhou", "bad");
-    showError(titles[status] || "Falha", reason);
+    const short = { rejected: "recusado", not_covered: "sem cobertura" };
+    setStatus(short[status] || "falhou", status === "not_covered" ? "running" : "bad");
+    showError(titles[status] || "Falha", reason, status === "not_covered" ? "info" : "");
     loadRuns();
   });
   source.onerror = () => {
@@ -245,19 +289,44 @@ function finish() {
   $("submit").disabled = false;
 }
 
+// ------------------------------------------------------------------ modo (Brasil/UF x rota) e ajuda
+
+function routeMode() {
+  return document.querySelector('input[name="mode"]:checked').value === "route";
+}
+
+function applyMode() {
+  const route = routeMode();
+  $("scope-fields").hidden = route;
+  $("route-fields").hidden = !route;
+  $("origin").required = route;
+  $("destination").required = route;
+}
+
+function showHelp() {
+  clearReport();
+  markCurrent(null);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 // ------------------------------------------------------------------ início
 
 async function init() {
   const meta = await (await fetch("/api/meta")).json();
   for (const uf of meta.ufs) $("uf").append(el("option", { value: uf }, uf));
   const badge = $("model-badge");
-  badge.textContent = `LLM: ${meta.llm_model}`;
+  const models = meta.llm_model.split(",").map((m) => m.trim().split(":").at(-1));
+  badge.textContent = `LLM: ${models[0]}` + (models.length > 1 ? ` (+${models.length - 1} reserva)` : "");
+  badge.title = `Cadeia de modelos (fallback): ${models.join(" → ")}`;
   badge.hidden = false;
   if (!meta.llm_key_configured) {
     $("offline").checked = true;
     $("key-warning").hidden = false;
   }
   $("report-form").addEventListener("submit", startRun);
+  for (const radio of document.querySelectorAll('input[name="mode"]')) radio.addEventListener("change", applyMode);
+  $("show-help").addEventListener("click", showHelp);
+  applyMode();
   await loadRuns();
 }
 
