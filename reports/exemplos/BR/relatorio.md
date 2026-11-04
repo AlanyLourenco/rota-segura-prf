@@ -2,12 +2,13 @@
 
 > **Período coberto (base PRF):** 02/08/2026 a 31/08/2026 — últimos 30 dias **disponíveis**.
 > A base da PRF é publicada com atraso de ~1 mês; o dado mais recente disponível é de
-> **31/08/2026** (não é o calendário de hoje, 27/10/2026).
+> **31/08/2026** (não é o calendário de hoje, 04/11/2026).
 > **Comparação:** 03/07/2026 a 01/08/2026 (30 dias imediatamente anteriores).
 > ⚠️ **Dados preliminares:** o ano corrente ainda está sujeito a revisão pela PRF (consolidação em janeiro, revisão em março).
 
 
-**Resumo:** No período preliminar de 02/08/2026 a 31/08/2026, o Brasil registrou 6.149 acidentes e 588 mortes nas rodovias federais.
+
+**Resumo:** As rodovias federais registraram 6.149 acidentes e 588 mortes nos últimos 30 dias, apresentando estabilidade com ligeira variação de -0,53%.
 
 
 ## 1. Indicadores principais **[BASE PRF]**
@@ -45,6 +46,10 @@ Trecho = segmento de 1 km (km inteiro). Ordenação: nº de acidentes; desempate
 
 ## 2. Gráficos **[BASE PRF]**
 
+![Principais causas](causas.png)
+
+![Trechos com mais acidentes](trechos.png)
+
 ![Acidentes diários](acidentes_diarios.png)
 
 ![Acidentes mensais](acidentes_mensais.png)
@@ -52,7 +57,8 @@ Trecho = segmento de 1 km (km inteiro). Ordenação: nº de acidentes; desempate
 
 ## 3. Perfil agregado das vítimas graves e fatais **[BASE PRF — anonimizado]**
 
-Contagens agregadas da base "por pessoa"; células com menos de 5 pessoas aparecem como `<5` (LGPD).
+Contagens agregadas da base "por pessoa"; células com menos de 5 pessoas aparecem como `<5` e, quando
+uma delas é a única do grupo, outra célula aparece como `suprimido` para impedir dedução pelo total (LGPD).
 
 **Faixa etaria:** Lesões Graves · 30-44: 579; Lesões Graves · 18-29: 555; Lesões Graves · 45-59: 373; Lesões Graves · 60+: 196; Lesões Graves · 0-17: 124; Óbito · 30-44: 174; Óbito · 45-59: 146; Óbito · 18-29: 113; Óbito · 60+: 95; Óbito · 0-17: 60
 
@@ -67,19 +73,25 @@ Cada parágrafo indica sua fonte: **[BASE PRF]** = calculado da base oficial; **
 
 ### Visão geral
 
-**[BASE PRF]** No período preliminar de 02/08/2026 a 31/08/2026, foram contabilizados 6.149 acidentes nas rodovias federais do Brasil, o que representa uma variação de -0,53% em relação aos 6.182 acidentes do período anterior. O total de óbitos foi de 588 e o número de feridos graves somou 1.827. A taxa de letalidade registrada foi de 9,56 mortes por 100 acidentes e a taxa de gravidade alcançou 29,53%.
+**[BASE PRF]** Nos últimos 30 dias analisados, o Brasil registrou 6.149 acidentes nas rodovias federais, somando 588 mortes e 1.827 feridos graves. Cabe destacar que estes dados são preliminares.
+
+**[BASE PRF]** A taxa de letalidade ficou em 9,56 mortes por 100 acidentes, enquanto a taxa de gravidade atingiu 29,53%, com variação de -0,53% no total de acidentes.
 
 ### Causas e trechos críticos
 
-**[BASE PRF]** A principal causa apontada no período foi a ausência de reação do condutor, com 1.008 acidentes, 66 mortes e uma participação de 16,39%. Em seguida, a reação tardia ou ineficiente do condutor somou 977 acidentes, 66 mortes e 15,89%. A conduta de acessar a via sem observar a presença de outros veículos registrou 565 acidentes e 46 mortes (9,19%). Já as manobras de mudança de faixa responderam por 392 acidentes e 32 mortes (6,38%), enquanto a falta de distância de segurança em relação ao veículo da frente contabilizou 390 acidentes e 1 morte (6,34%).
+**[BASE PRF]** A principal causa registrada foi a ausência de reação do condutor, acumulando 1.008 acidentes. A reação tardia ou ineficiente respondeu por 977 ocorrências.
 
-**[BASE PRF]** Entre os trechos com maior concentração de ocorrências, o km 207 da BR 101 em SC teve 10 acidentes, 1 morte e 3 acidentes graves. No km 230 da BR 116 em SP foram registrados 8 acidentes, 0 mortes e 1 acidente grave. No RJ, o km 185 da BR 116 e o km 121 da BR 40 registraram 7 acidentes cada, ambos com 3 acidentes graves e respectivamente 1 e 0 mortes. O km 214 da BR 101 em SC somou 7 acidentes, 0 mortes e 1 acidente grave.
+**[BASE PRF]** O ponto com mais acidentes no país ficou na BR-101 em Santa Catarina, no km 207, contabilizando 10 acidentes e 1 morte.
+
+### Tendência
+
+**[BASE PRF]** A contagem diária de ocorrências variou entre o valor mínimo de 171 e o máximo de 261 acidentes ao longo do período.
+
+**[BASE PRF]** No consolidado do mês de agosto de 2026, as rodovias nacionais somaram 6.381 acidentes e 608 mortes.
 
 ### Contexto das notícias
 
-**[NOTÍCIA 5]** No contexto de ações institucionais, a Polícia Rodoviária Federal anunciou a Operação Nossa Senhora Aparecida 2026 focado no reforço da fiscalização e no uso de tecnologia nas rodovias.
-
-**[NOTÍCIA 4]** Paralelamente, o Ministério da Justiça organizou operação direcionada à garantia da segurança pública durante o 2º turno eleitoral.
+**[NOTÍCIA 4]** **[NOTÍCIA 5]** No âmbito da fiscalização, foram preparadas ações operacionais do governo para o reforço da segurança viária em períodos festivos e de eleições.
 
 
 ## 5. Notícias consultadas
@@ -95,8 +107,8 @@ Cada parágrafo indica sua fonte: **[BASE PRF]** = calculado da base oficial; **
 
 ## 6. Transparência e governança
 
-- **Execução:** `20261027-212244-7b0545` · trilha de auditoria em `audit/20261027-212244-7b0545.jsonl` e manifesto em `audit/20261027-212244-7b0545.manifest.json`.
-- **Modelo de linguagem:** `gemini-3.6-flash` · versão dos prompts `2026-10-27.1`.
+- **Execução:** `20261104-170631-b3ef3b` · trilha de auditoria em `audit/20261104-170631-b3ef3b.jsonl` e manifesto em `audit/20261104-170631-b3ef3b.manifest.json`.
+- **Modelo de linguagem:** `gemini-3.6-flash` · versão dos prompts `2026-11-01.2`.
 - **Guardrails de saída:** aprovado após 1 tentativa(s).
 - **Origem dos números:** todas as métricas, tabelas e gráficos são calculados por código determinístico (DuckDB) sobre a base aberta da PRF; o LLM apenas redige comentários e é verificado contra esses números.
 - **Notícias:** usadas apenas como contexto. O agente é proibido de atribuir causa a um acidente específico noticiado; causas vêm exclusivamente da base.

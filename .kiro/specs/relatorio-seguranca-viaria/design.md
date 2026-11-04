@@ -38,6 +38,14 @@ O writer devolve JSON `{sections:[{title, paragraphs:[{text, sources:["BASE"|"NE
 3. Parágrafo com fonte só-NEWS não pode conter vocabulário de causa da base ("causa", nomes de causas).
 4. Regex de PII (CPF, placa Mercosul/antiga, e-mail, telefone).
 
+## Interface web (R9)
+`rota-segura web` → FastAPI em 127.0.0.1. `GET /api/stream` roda `service.run_report` numa thread e transmite por SSE cada evento do `AuditLogger` (via `listener`), terminando com `done` (chave do relatório) ou `failed` (status + motivo). `GET /api/runs` lista relatórios em `reports/` e `GET /api/runs/{key}` devolve HTML saneado, eventos do JSONL e manifesto. O frontend é estático (HTML/CSS/JS sem build), sob CSP `script-src 'self'`.
+
+## Modo rota (R10)
+`route.py`: `plan_route(origem, destino)` → Nominatim (geocodificação, `countrycodes=br`) + OSRM (`steps`, geometria GeoJSON) → `RoutePlan` (cidades, UF, distância, BRs dos `ref` dos passos, coordenadas). Injetável (`ToolContext.router`) para testes.
+Nó determinístico `route` entre `input_guard` e `orchestrator`: chama o roteador, depois `MetricsEngine.route_segments` (grade de ~1,1 km sobre o traçado densificado, dilatada em 1 célula; acidentes das BRs da rota com lat/lon na grade → intervalos de km por UF+BR, unindo lacunas ≤ 5 km). Sem BR ou sem trecho → `RouteNotCovered` (status `not_covered`).
+`MetricsEngine.compute(uf, segments, period_days)` filtra por `OR` de `(uf, br, km BETWEEN)`. Perfil de vítimas não se aplica à rota (base por pessoa só tem UF). Notícias usam as BRs da rota na busca.
+
 ## Testes
 Unitários para ingestão (parsing), métricas (fixture sintética), privacidade, guardrails, e o grafo em modo offline.
 Conjunto golden `evals/golden_guardrails.json` (casos de entrada/saída com decisão esperada), rodado no pytest e em `rota-segura eval`.

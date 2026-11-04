@@ -1,14 +1,15 @@
 {
-  "run_id": "20261027-212353-9aee76",
-  "started_at": "2026-10-28T00:23:53.016+00:00",
+  "run_id": "20261104-170700-81211d",
+  "started_at": "2026-11-04T20:07:00.194+00:00",
   "status": "ok",
-  "news_snapshot": "reports/SC-20261027-212353-9aee76/noticias.json",
+  "news_snapshot": "reports\\_novo-SC\\noticias.json",
   "news_sha256": "bcdb7e546d82dae8c2267f38cbe6a9c04d0241d3dfd19eb62bbaa458372c5ad6",
   "news_replayed": true,
   "scope": "SC",
   "focus": null,
   "offline": false,
-  "llm_model": "google_genai:gemini-3.6-flash",
+  "route": null,
+  "llm_model": "google_genai:gemini-3.6-flash,google_genai:gemini-3.8-flash,google_genai:gemini-3.5-flash,google_genai:gemini-3.1-flash-lite",
   "data_sha256": "a4b7511ca2a52cec15bf89cd2fb60d347ab39f25ee80d0fda68e366b82cfeefb",
   "data_max_date": "2026-08-31",
   "period": {
@@ -60,7 +61,7 @@
       "provider": "google_news_rss"
     }
   ],
-  "report": "reports/SC-20261027-212353-9aee76/relatorio.md",
-  "finished_at": "2026-10-28T00:25:39.743+00:00",
+  "report": "reports\\_novo-SC\\relatorio.md",
+  "finished_at": "2026-11-04T20:08:13.954+00:00",
   "events": 35
 }

@@ -10,3 +10,4 @@ data/processed/
 audit/
 reports/*
 !reports/exemplos/
+.superpowers/

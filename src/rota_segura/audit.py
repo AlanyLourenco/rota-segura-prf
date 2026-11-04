@@ -11,6 +11,7 @@ import hashlib
 import json
 import time
 import uuid
+from collections.abc import Callable
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -36,13 +37,17 @@ def _summarize(value: Any) -> Any:
 
 
 class AuditLogger:
-    def __init__(self, audit_dir: Path, run_id: str | None = None) -> None:
+    def __init__(
+        self, audit_dir: Path, run_id: str | None = None, listener: Callable[[dict[str, Any]], None] | None = None
+    ) -> None:
+        """`listener` recebe cada evento já gravado (ex.: a interface web transmite ao vivo)."""
         self.run_id = run_id or datetime.now().strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:6]
         audit_dir.mkdir(parents=True, exist_ok=True)
         self.path = audit_dir / f"{self.run_id}.jsonl"
         self.manifest_path = audit_dir / f"{self.run_id}.manifest.json"
         self._seq = 0
         self.manifest: dict[str, Any] = {"run_id": self.run_id, "started_at": _now()}
+        self._listener = listener
 
     def log(self, event: str, node: str, **data: Any) -> None:
         self._seq += 1
@@ -56,6 +61,8 @@ class AuditLogger:
         }
         with self.path.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
+        if self._listener:
+            self._listener(json.loads(json.dumps(record, ensure_ascii=False, default=str)))
 
     @contextmanager
     def step(self, node: str, **inputs: Any):

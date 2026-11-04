@@ -22,6 +22,7 @@ Mudança de escopo? Atualize a spec **antes** do código.
 .venv/Scripts/python -m pytest -q
 .venv/Scripts/ruff check src tests
 .venv/Scripts/python -m rota_segura.cli report --uf SC --offline
+.venv/Scripts/python -m rota_segura.cli web   # interface local
 ```
 
 ## Economia de tokens

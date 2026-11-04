@@ -1,6 +1,6 @@
 """Grafo LangGraph do agente.
 
-input_guard → orchestrator ⇄ tools → collect → writer → output_guard ─┬→ render
+input_guard → [route] → orchestrator ⇄ tools → collect → writer → output_guard ─┬→ render
                                                        ↑______________│ (reprovado e tentativas < máx.)
                                                                       └→ sanitize → render (tentativas esgotadas)
 """
@@ -21,9 +21,20 @@ from rota_segura.agent import prompts
 from rota_segura.agent.tools import ToolContext, make_tools, metrics_for_llm
 from rota_segura.audit import AuditLogger
 from rota_segura.data.privacy import assert_llm_safe
-from rota_segura.guardrails import Draft, GuardReport, numbers_in, validate_draft, validate_request
+from rota_segura.guardrails import (
+    Draft,
+    GuardReport,
+    InputRejected,
+    RouteNotCovered,
+    numbers_in,
+    validate_draft,
+    validate_request,
+    validate_route,
+)
+from rota_segura.llm import answered_by
 from rota_segura.news import NewsItem
 from rota_segura.report import render_report
+from rota_segura.route import RouteError, RouteInfo
 
 MAX_ORCHESTRATOR_STEPS = 8
 
@@ -31,6 +42,8 @@ MAX_ORCHESTRATOR_STEPS = 8
 class ReportState(TypedDict, total=False):
     uf: str | None
     focus: str | None
+    origin: str | None
+    destination: str | None
     messages: Annotated[list[BaseMessage], add_messages]
     orchestrator_steps: int
     draft: Draft | None
@@ -38,6 +51,7 @@ class ReportState(TypedDict, total=False):
     attempts: int
     warnings: list[str]
     report_path: str
+    writer_model: str
 
 
 @dataclass
@@ -74,19 +88,56 @@ def build_graph(deps: AgentDeps):
     audit, ctx, cfg = deps.audit, deps.ctx, deps.ctx.cfg
 
     def input_guard(state: ReportState) -> ReportState:
-        with audit.step("input_guard", uf=state.get("uf"), focus=state.get("focus")):
-            uf, focus = validate_request(state.get("uf"), state.get("focus"))
-            audit.decision("input_guard", "aprovado", "UF e foco válidos", uf=uf, focus=focus)
+        origin, destination = state.get("origin"), state.get("destination")
+        with audit.step("input_guard", uf=state.get("uf"), focus=state.get("focus"), origin=origin, dest=destination):
+            route = validate_route(state.get("uf"), origin, destination)
+            uf, focus = validate_request(None if route else state.get("uf"), state.get("focus"))
+            origin, destination = route or (None, None)
+            audit.decision(
+                "input_guard", "aprovado", "entrada válida", uf=uf, focus=focus, origin=origin, dest=destination
+            )
         ctx.uf = uf
         task = f"Prepare os insumos do relatório para: {uf or 'Brasil'}." + (f" Foco: {focus}" if focus else "")
         return {
             "uf": uf,
             "focus": focus,
-            "messages": [HumanMessage(task)],
+            "origin": origin,
+            "destination": destination,
+            "messages": [] if origin else [HumanMessage(task)],  # rota: a tarefa sai do nó `route`
             "orchestrator_steps": 0,
             "attempts": 0,
             "warnings": [],
         }
+
+    def plan_route(state: ReportState) -> ReportState:
+        """R10: traça a rota (serviço de mapas) e associa os trechos da base; sem BR com dados, não há relatório."""
+        with audit.step("route", origin=state["origin"], destination=state["destination"]):
+            try:
+                plan = ctx.router(state["origin"], state["destination"])
+            except RouteError as exc:
+                raise InputRejected(str(exc)) from exc
+            segments = ctx.engine.route_segments(plan.br_paths, plan.br_km) if plan.brs else []
+            ctx.route = RouteInfo(
+                origin=plan.origin.label, destination=plan.destination.label, distance_km=plan.distance_km,
+                brs=plan.brs, segments=segments,
+            )  # fmt: skip
+            audit.log("tool_result", "route", output=ctx.route.model_dump(), br_km=plan.br_km)
+            if not plan.brs:
+                reason = f"A rota {ctx.route.label} ({plan.distance_km} km) não passa por rodovias federais."
+            elif not segments:
+                brs = ", ".join(f"BR-{b:03d}" for b in plan.brs)
+                reason = f"A rota {ctx.route.label} usa {brs}, mas a base da PRF não tem acidentes nesses trechos."
+            else:
+                reason = ""
+            if reason:
+                audit.decision("route", "sem cobertura", reason)
+                raise RouteNotCovered(reason + " A base da PRF cobre só rodovias federais; relatório não gerado.")
+            audit.decision("route", "coberta", f"{len(segments)} trecho(s) da base sobre o traçado")
+        brs = ", ".join(f"BR-{b:03d}" for b in ctx.route.brs)
+        task = f"Prepare os insumos do relatório da rota {ctx.route.label} ({brs})." + (
+            f" Foco: {state['focus']}" if state.get("focus") else ""
+        )
+        return {"messages": [HumanMessage(task)]}
 
     def orchestrate(state: ReportState) -> ReportState:
         with audit.step("orchestrator", step=state["orchestrator_steps"] + 1):
@@ -94,7 +145,7 @@ def build_graph(deps: AgentDeps):
             audit.log(
                 "llm_call",
                 "orchestrator",
-                model=_model_name(deps.orchestrator_llm),
+                model=answered_by(reply, _model_name(deps.orchestrator_llm)),
                 prompt_version=prompts.PROMPT_VERSION,
                 content=str(reply.content),
                 tool_calls=[{"name": c["name"], "args": c["args"]} for c in reply.tool_calls],
@@ -163,16 +214,17 @@ def build_graph(deps: AgentDeps):
         with audit.step("writer", attempt=attempt):
             result = writer.invoke([SystemMessage(prompts.WRITER_SYSTEM), HumanMessage(user)])
             draft, raw = _unpack_structured(result)
+            used = answered_by(raw, _model_name(deps.writer_llm))
             audit.log(
                 "llm_call",
                 "writer",
-                model=_model_name(deps.writer_llm),
+                model=used,
                 prompt_version=prompts.PROMPT_VERSION,
                 prompt_sha256=hashlib.sha256(user.encode()).hexdigest(),
                 output=draft.model_dump(),
                 usage=getattr(raw, "usage_metadata", None),
             )
-        return {"draft": draft, "attempts": attempt}
+        return {"draft": draft, "attempts": attempt, "writer_model": used}
 
     def output_guard(state: ReportState) -> ReportState:
         with audit.step("output_guard", attempt=state["attempts"]):
@@ -225,7 +277,7 @@ def build_graph(deps: AgentDeps):
                 victim_profile=ctx.victim_profile,
                 warnings=state["warnings"],
                 run_id=audit.run_id,
-                model=_model_name(deps.writer_llm),
+                model=state.get("writer_model") or _model_name(deps.writer_llm),
                 prompt_version=prompts.PROMPT_VERSION,
                 guard=state["guard"],
                 attempts=state["attempts"],
@@ -237,6 +289,7 @@ def build_graph(deps: AgentDeps):
     graph = StateGraph(ReportState)
     for name, fn in [
         ("input_guard", input_guard),
+        ("route", plan_route),
         ("orchestrator", orchestrate),
         ("tools", run_tools),
         ("collect", collect),
@@ -247,7 +300,10 @@ def build_graph(deps: AgentDeps):
     ]:
         graph.add_node(name, fn)
     graph.add_edge(START, "input_guard")
-    graph.add_edge("input_guard", "orchestrator")
+    graph.add_conditional_edges(
+        "input_guard", lambda s: "route" if s.get("origin") else "orchestrator", ["route", "orchestrator"]
+    )
+    graph.add_edge("route", "orchestrator")
     graph.add_conditional_edges("orchestrator", route_orchestrator, ["tools", "collect"])
     graph.add_edge("tools", "orchestrator")
     graph.add_edge("collect", "writer")

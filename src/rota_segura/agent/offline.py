@@ -78,7 +78,7 @@ def _template_draft(m: dict, news: list[dict]) -> Draft:
                  "A notícia é apresentada como contexto e não foi cruzada com registros individuais da base.",
         )]))  # fmt: skip
     return Draft(
-        headline=f"{m['scope']}: {m['total_accidents']} acidentes nos últimos 30 dias disponíveis "
+        headline=f"{m['scope']}: {m['total_accidents']} acidentes nos últimos {m['period_days']} dias disponíveis "
         f"({var_txt} frente ao período anterior).",
         sections=sections,
     )

@@ -20,3 +20,7 @@
 - [x] 16. Rodar com LLM real e versionar exemplo para BR e uma UF (exemplos atuais: modo offline)
 - [x] 17. Supressão complementar no perfil de vítimas (R8.2)
 - [x] 18. Cache de notícias por execução (reprodutibilidade) (R7)
+- [x] 19. Interface web local: FastAPI + SSE da trilha de auditoria, layout lado a lado, relatórios anteriores (R9)
+- [x] 20. Cadeia de modelos com fallback (`LLM_MODEL` em lista) + `ORCHESTRATOR_MODEL=offline` + modelo real registrado na auditoria (R5, R7)
+- [x] 21. Modo rota origem → destino (OSM/OSRM, trechos da base, período 365 d, `not_covered`) + cards explicativos na interface (R10)
+- [x] 22. Relatório HTML didático autossuficiente (cards, gráficos de causas/trechos, “como ler”, sem script) exibido na interface e baixável; prompt do redator em tópicos curtos (R5, R9)

@@ -1,14 +1,15 @@
 {
-  "run_id": "20261027-212244-7b0545",
-  "started_at": "2026-10-28T00:22:44.109+00:00",
+  "run_id": "20261104-170631-b3ef3b",
+  "started_at": "2026-11-04T20:06:31.124+00:00",
   "status": "ok",
-  "news_snapshot": "reports/BR-20261027-212244-7b0545/noticias.json",
+  "news_snapshot": "reports\\_novo-BR\\noticias.json",
   "news_sha256": "f006540d84147a469519b22a539818c83856d9b9ec10173c73f851ebdbf17b5d",
-  "news_replayed": false,
+  "news_replayed": true,
   "scope": "Brasil",
   "focus": null,
   "offline": false,
-  "llm_model": "google_genai:gemini-3.6-flash",
+  "route": null,
+  "llm_model": "google_genai:gemini-3.6-flash,google_genai:gemini-3.8-flash,google_genai:gemini-3.5-flash,google_genai:gemini-3.1-flash-lite",
   "data_sha256": "a4b7511ca2a52cec15bf89cd2fb60d347ab39f25ee80d0fda68e366b82cfeefb",
   "data_max_date": "2026-08-31",
   "period": {
@@ -60,7 +61,7 @@
       "provider": "google_news_rss"
     }
   ],
-  "report": "reports/BR-20261027-212244-7b0545/relatorio.md",
-  "finished_at": "2026-10-28T00:23:29.626+00:00",
+  "report": "reports\\_novo-BR\\relatorio.md",
+  "finished_at": "2026-11-04T20:06:57.170+00:00",
   "events": 35
 }

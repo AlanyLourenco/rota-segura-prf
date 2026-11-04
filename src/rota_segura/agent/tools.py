@@ -17,6 +17,7 @@ from rota_segura.config import Settings
 from rota_segura.data.privacy import assert_llm_safe
 from rota_segura.metrics import MetricsBundle, MetricsEngine
 from rota_segura.news import NewsItem, load_news, search_news
+from rota_segura.route import RouteInfo, Router, plan_route
 
 
 @dataclass
@@ -31,6 +32,8 @@ class ToolContext:
     charts: dict[str, Path] = field(default_factory=dict)
     news: list[NewsItem] | None = None
     victim_profile: dict | None = None
+    route: RouteInfo | None = None  # preenchido pelo nó `route` (R10)
+    router: Router = plan_route
 
 
 def metrics_for_llm(metrics: MetricsBundle) -> dict:
@@ -38,6 +41,8 @@ def metrics_for_llm(metrics: MetricsBundle) -> dict:
     data = metrics.model_dump(mode="json", exclude={"daily"})
     daily = [p.accidents for p in metrics.daily]
     data["daily"] = {"min": min(daily), "max": max(daily), "dias": len(daily)} if daily else {}
+    if metrics.route:
+        data["route"]["brs_without_data"] = metrics.route.brs_without_data
     return assert_llm_safe(data)
 
 
@@ -46,7 +51,7 @@ def make_tools(ctx: ToolContext) -> list[BaseTool]:
     def get_road_safety_metrics() -> str:
         """Calcula as métricas oficiais (variação, letalidade, gravidade, top causas e trechos) para o escopo
         do relatório a partir da base da PRF. Deve ser a primeira ferramenta chamada."""
-        ctx.metrics = ctx.engine.compute(ctx.uf)
+        ctx.metrics = ctx.engine.compute(ctx.uf, route=ctx.route)
         return json.dumps(metrics_for_llm(ctx.metrics), ensure_ascii=False)
 
     @tool
@@ -64,7 +69,10 @@ def make_tools(ctx: ToolContext) -> list[BaseTool]:
         if ctx.news_snapshot:
             ctx.news = load_news(ctx.news_snapshot)
         else:
-            ctx.news = [] if ctx.offline_news else search_news(ctx.uf, ctx.cfg.tavily_api_key, ctx.cfg.max_news)
+            brs = [f"BR-{br:03d}" for br in ctx.route.brs] if ctx.route else None
+            ctx.news = (
+                [] if ctx.offline_news else search_news(ctx.uf, ctx.cfg.tavily_api_key, ctx.cfg.max_news, roads=brs)
+            )
         items = [n.model_dump(include={"id", "title", "source", "published"}) for n in ctx.news]
         return json.dumps({"news": items, "focus_ignored_if_empty": focus}, ensure_ascii=False)
 
@@ -75,6 +83,8 @@ def make_tools(ctx: ToolContext) -> list[BaseTool]:
         "suprimido" para impedir dedução por subtração (LGPD)."""
         if ctx.metrics is None:
             return "ERRO: chame get_road_safety_metrics antes."
+        if ctx.route:
+            return "Perfil de vítimas não se aplica à rota (a base por pessoa só tem UF, sem BR/km)."
         ctx.victim_profile = ctx.engine.victim_profile(ctx.uf, ctx.metrics.period)
         if ctx.victim_profile is None:
             return "Perfil de vítimas indisponível (base por pessoa não ingerida)."

@@ -2,14 +2,22 @@
 
 from __future__ import annotations
 
+import math
 from datetime import date, timedelta
 from pathlib import Path
 
 import duckdb
+import pandas as pd
 from pydantic import BaseModel
 
 from rota_segura.config import Settings, settings
 from rota_segura.data.privacy import suppress_small_cells
+from rota_segura.route import RouteInfo, RouteSegment
+
+GRID_DEG = 0.01  # célula de ~1,1 km para associar acidentes georreferenciados ao traçado da rota
+SEGMENT_GAP_KM = 5  # kms de uma mesma BR mais distantes que isso viram trechos separados
+KM_SLACK = 1  # folga (km) de cada lado ao limitar um trecho à distância percorrida na BR
+MIN_ANCHORS = 3  # mínimo de acidentes para um intervalo de km contar como trecho da rota
 
 
 class Period(BaseModel):
@@ -53,9 +61,10 @@ class MonthlyPoint(BaseModel):
 
 
 class MetricsBundle(BaseModel):
-    scope: str  # "Brasil" ou sigla da UF
+    scope: str  # "Brasil", sigla da UF ou "Rota A → B"
     uf: str | None
     data_max_date: date
+    period_days: int
     period: Period
     previous_period: Period
     total_accidents: int
@@ -70,12 +79,13 @@ class MetricsBundle(BaseModel):
     daily: list[DailyPoint]
     monthly: list[MonthlyPoint]
     preliminary: bool
+    route: RouteInfo | None = None
 
     def numbers(self) -> set[float]:
         """Todos os números citáveis pelo LLM (usado pelo guardrail de alucinação numérica)."""
         values: set[float] = {
             self.total_accidents, self.previous_total, self.deaths, self.severe_injuries,
-            self.lethality_rate, self.severity_rate, self.data_max_date.year,
+            self.lethality_rate, self.severity_rate, self.data_max_date.year, self.period_days,
             self.period.start.year, self.previous_period.start.year,
             self.period.start.day, self.period.end.day, self.previous_period.start.day, self.previous_period.end.day,
             self.period.start.month, self.period.end.month,
@@ -89,6 +99,10 @@ class MetricsBundle(BaseModel):
             values |= {s.br, s.km, s.accidents, s.deaths, s.severe_accidents}
         values |= {p.accidents for p in self.daily} | {m.accidents for m in self.monthly}
         values |= {m.deaths for m in self.monthly}
+        if self.route:
+            values |= {self.route.distance_km, *self.route.brs}
+            for seg in self.route.segments:
+                values |= {seg.br, seg.km_start, seg.km_end}
         for m in self.monthly:  # "2025-09" -> 2025 e 9 são citáveis
             year, month = m.month.split("-")
             values |= {int(year), int(month)}
@@ -131,15 +145,68 @@ class MetricsEngine:
             profile[dim] = suppress_small_cells(records, self.cfg.min_cell_size)
         return profile
 
-    def _where(self, uf: str | None) -> tuple[str, list]:
+    def route_segments(
+        self, br_paths: dict[int, list[list[tuple[float, float]]]], br_km: dict[int, float] | None = None
+    ) -> list[RouteSegment]:
+        """Trechos (UF + BR + intervalo de km) da base que ficam sobre o traçado da rota.
+
+        Para cada BR, densifica só os pedaços do traçado percorridos nela, marca as células de ~1,1 km que eles
+        tocam (e as vizinhas) e pega os acidentes georreferenciados daquela BR nessas células; os kms viram
+        intervalos por UF+BR. Intervalos ancorados por menos de `MIN_ANCHORS` acidentes são descartados
+        (coordenada errada na base não deve virar trecho da rota). Como a coordenada da base é imprecisa em área
+        urbana, um trecho nunca passa da distância percorrida na BR (`br_km`) + folga, centrado na mediana.
+        """
+        cells = [(br, cy, cx) for br, paths in br_paths.items() for cy, cx in _route_cells(paths)]
+        if not cells:
+            return []
+        self.con.register("route_cells", pd.DataFrame(cells, columns=["br", "cy", "cx"]))
+        try:
+            rows = self.con.execute(
+                f"""
+                SELECT a.uf, a.br, floor(a.km)::INT AS km, count(*) AS n
+                FROM acidentes a JOIN route_cells c
+                  ON a.br = c.br
+                 AND floor(a.latitude / {GRID_DEG})::INT = c.cy AND floor(a.longitude / {GRID_DEG})::INT = c.cx
+                WHERE a.km IS NOT NULL
+                GROUP BY 1, 2, 3 ORDER BY 1, 2, 3
+                """
+            ).fetchall()
+        finally:
+            self.con.unregister("route_cells")
+        groups: list[list[tuple[str, int, int, int]]] = []
+        for row in rows:
+            last = groups[-1][-1] if groups else None
+            if last and last[:2] == row[:2] and row[2] - last[2] <= SEGMENT_GAP_KM:
+                groups[-1].append(row)
+            else:
+                groups.append([row])
+        segments = []
+        for group in groups:
+            uf, br = group[0][:2]
+            kms = [km for _, _, km, n in group for _ in range(n)]
+            start, end = kms[0], kms[-1]
+            limit = (br_km or {}).get(br)
+            if limit is not None and end - start > 1.5 * limit + 2 * KM_SLACK:  # só corrige desvio grosseiro
+                mid = kms[len(kms) // 2]
+                half = math.ceil(limit / 2 + KM_SLACK)
+                start, end = max(start, mid - half), min(end, mid + half)
+            n = sum(1 for km in kms if start <= km <= end)
+            if n >= MIN_ANCHORS:
+                segments.append(RouteSegment(uf=uf, br=br, km_start=start, km_end=end, accidents_matched=n))
+        return segments
+
+    def _where(self, uf: str | None, segments: list[RouteSegment] | None = None) -> tuple[str, list]:
+        if segments:
+            clause = " OR ".join(["(uf = ? AND br = ? AND km >= ? AND km < ?)"] * len(segments))
+            return f"({clause})", [v for s in segments for v in (s.uf, s.br, s.km_start, s.km_end + 1)]
         return ("uf = ?", [uf]) if uf else ("TRUE", [])
 
-    def compute(self, uf: str | None = None) -> MetricsBundle:
-        where, params = self._where(uf)
+    def compute(self, uf: str | None = None, route: RouteInfo | None = None) -> MetricsBundle:
+        where, params = self._where(uf, route.segments if route else None)
         max_date = self.con.execute(f"SELECT max(data)::DATE FROM acidentes WHERE {where}", params).fetchone()[0]
         if max_date is None:
-            raise ValueError(f"Sem dados para a UF {uf}.")
-        days = self.cfg.period_days
+            raise ValueError(f"Sem dados para o escopo {route.label if route else uf}.")
+        days = self.cfg.route_period_days if route else self.cfg.period_days
         period = Period(start=max_date - timedelta(days=days - 1), end=max_date)
         previous = Period(start=period.start - timedelta(days=days), end=period.start - timedelta(days=1))
 
@@ -147,10 +214,12 @@ class MetricsEngine:
         prev_total = self._summary(where, params, previous)["accidents"]
         variation = round(100 * (current["accidents"] - prev_total) / prev_total, 2) if prev_total else None
 
+        daily_start = max_date - timedelta(days=self.cfg.period_days - 1)  # gráfico diário: sempre 30 dias
         return MetricsBundle(
-            scope=uf or "Brasil",
+            scope=f"Rota {route.label}" if route else uf or "Brasil",
             uf=uf,
             data_max_date=max_date,
+            period_days=days,
             period=period,
             previous_period=previous,
             total_accidents=current["accidents"],
@@ -162,9 +231,10 @@ class MetricsEngine:
             severity_rate=_pct(current["severe_accidents"], current["accidents"]),
             top_causes=self._top_causes(where, params, period, current["accidents"]),
             top_segments=self._top_segments(where, params, period),
-            daily=self._daily(where, params, period),
+            daily=self._daily(where, params, Period(start=daily_start, end=max_date)),
             monthly=self._monthly(where, params, max_date),
             preliminary=bool(current["preliminary"]),
+            route=route,
         )
 
     def _summary(self, where: str, params: list, period: Period) -> dict:
@@ -230,6 +300,19 @@ class MetricsEngine:
             [*params, first_month, max_date],
         ).fetchall()
         return [MonthlyPoint(month=m, accidents=n, deaths=d) for m, n, d in rows]
+
+
+def _route_cells(paths: list[list[tuple[float, float]]]) -> set[tuple[int, int]]:
+    """Células da grade tocadas pelos pedaços do traçado (densificados) e suas 8 vizinhas."""
+    cells: set[tuple[int, int]] = set()
+    for path in paths:
+        for (lat1, lon1), (lat2, lon2) in zip(path, path[1:] or path, strict=False):
+            steps = max(1, math.ceil(max(abs(lat2 - lat1), abs(lon2 - lon1)) / (GRID_DEG / 2)))
+            for i in range(steps + 1):
+                lat, lon = lat1 + (lat2 - lat1) * i / steps, lon1 + (lon2 - lon1) * i / steps
+                cy, cx = math.floor(lat / GRID_DEG), math.floor(lon / GRID_DEG)
+                cells.update((cy + dy, cx + dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1))
+    return cells
 
 
 def _add_months(d: date, months: int) -> date:
